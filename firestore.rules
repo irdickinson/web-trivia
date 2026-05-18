@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Dev-only open rules — will be locked down before production
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
