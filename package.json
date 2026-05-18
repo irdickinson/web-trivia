@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "dompurify": "^3.4.5",
     "fastest-levenshtein": "^1.0.16",
     "firebase": "^11.0.0",
     "react": "^19.1.0",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@eslint/js": "^9.25.0",
     "@tailwindcss/vite": "^4.1.0",
+    "@types/dompurify": "^3.0.5",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.4.1",
