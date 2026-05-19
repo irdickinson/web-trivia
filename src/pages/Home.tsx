@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { Button } from '../components/ui/Button'
 import { LoadingScreen } from '../components/ui/LoadingScreen'
 import { getAuthErrorMessage } from '../utils/authErrors'
+import { PageMeta } from '../components/seo/PageMeta'
 
 export default function Home() {
   const { user, loading, isAnonymous, signInAsGuest, signOut } = useAuth()
@@ -28,6 +29,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 gap-8">
+      <PageMeta
+        title="Free Multiplayer Trivia Game"
+        description="Host a trivia room, share the code, and challenge your friends across History, Science, Geography, Pop Culture, and more. No download required."
+        path="/"
+      />
       <div className="text-center">
         <h1 className="text-6xl font-bold tracking-tight">Web Trivia</h1>
         <p className="text-gray-400 mt-3 text-lg">

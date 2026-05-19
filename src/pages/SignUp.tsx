@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Card } from '../components/ui/Card'
 import { getAuthErrorMessage } from '../utils/authErrors'
+import { PageMeta } from '../components/seo/PageMeta'
 
 export default function SignUp() {
   const { signUpWithEmail } = useAuth()
@@ -31,6 +32,11 @@ export default function SignUp() {
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+      <PageMeta
+        title="Create Account"
+        description="Create a free Web Trivia account to host and join multiplayer trivia games with your friends."
+        path="/sign-up"
+      />
       <div className="w-full max-w-sm flex flex-col gap-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white">Create Account</h1>
