@@ -76,7 +76,7 @@ export default function Lobby() {
     'bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
+    <main className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Play</h1>
 
@@ -140,7 +140,7 @@ export default function Lobby() {
               </div>
             </div>
 
-            {createError && <p className="text-red-400 text-sm">{createError}</p>}
+            {createError && <p role="alert" className="text-red-400 text-sm">{createError}</p>}
 
             <Button
               onClick={handleCreate}
@@ -176,7 +176,7 @@ export default function Lobby() {
               className="tracking-widest font-mono text-lg"
             />
 
-            {joinError && <p className="text-red-400 text-sm">{joinError}</p>}
+            {joinError && <p role="alert" className="text-red-400 text-sm">{joinError}</p>}
 
             <Button
               onClick={handleJoin}
@@ -191,6 +191,6 @@ export default function Lobby() {
           </Card>
         </div>
       </div>
-    </div>
+    </main>
   )
 }

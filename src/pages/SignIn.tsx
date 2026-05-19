@@ -43,7 +43,7 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <PageMeta
         title="Sign In"
         description="Sign in to Web Trivia to host or join multiplayer trivia games with friends."
@@ -73,7 +73,7 @@ export default function SignIn() {
               autoComplete="current-password"
               required
             />
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p role="alert" className="text-red-400 text-sm">{error}</p>}
             <Button type="submit" loading={loading} size="lg" className="w-full mt-1">
               Sign In
             </Button>
@@ -96,6 +96,6 @@ export default function SignIn() {
           </p>
         </div>
       </div>
-    </div>
+    </main>
   )
 }

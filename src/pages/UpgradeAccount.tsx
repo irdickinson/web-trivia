@@ -30,7 +30,7 @@ export default function UpgradeAccount() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-sm flex flex-col gap-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white">Save Your Progress</h1>
@@ -71,7 +71,7 @@ export default function UpgradeAccount() {
               autoComplete="new-password"
               required
             />
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p role="alert" className="text-red-400 text-sm">{error}</p>}
             <Button type="submit" loading={loading} size="lg" className="w-full mt-1">
               Save Account
             </Button>
@@ -85,6 +85,6 @@ export default function UpgradeAccount() {
           ← Go back
         </button>
       </div>
-    </div>
+    </main>
   )
 }

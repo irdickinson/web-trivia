@@ -92,7 +92,7 @@ export default function Room() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
+    <main className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
       <div className="max-w-lg mx-auto flex flex-col gap-6">
 
         <div className="flex items-start justify-between">
@@ -131,6 +131,6 @@ export default function Room() {
         )}
 
       </div>
-    </div>
+    </main>
   )
 }

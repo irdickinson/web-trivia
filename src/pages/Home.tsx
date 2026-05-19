@@ -28,7 +28,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 gap-8">
+    <main className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 gap-8">
       <PageMeta
         title="Free Multiplayer Trivia Game"
         description="Host a trivia room, share the code, and challenge your friends across History, Science, Geography, Pop Culture, and more. No download required."
@@ -85,9 +85,9 @@ export default function Home() {
           >
             Play as Guest
           </Button>
-          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+          {error && <p role="alert" className="text-red-400 text-sm text-center">{error}</p>}
         </div>
       )}
-    </div>
+    </main>
   )
 }

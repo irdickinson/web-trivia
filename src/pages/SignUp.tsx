@@ -31,7 +31,7 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <PageMeta
         title="Create Account"
         description="Create a free Web Trivia account to host and join multiplayer trivia games with your friends."
@@ -74,7 +74,7 @@ export default function SignUp() {
               autoComplete="new-password"
               required
             />
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p role="alert" className="text-red-400 text-sm">{error}</p>}
             <Button type="submit" loading={loading} size="lg" className="w-full mt-1">
               Create Account
             </Button>
@@ -88,6 +88,6 @@ export default function SignUp() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   )
 }
