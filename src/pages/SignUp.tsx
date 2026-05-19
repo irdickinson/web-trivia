@@ -1,9 +1,6 @@
 import { useState, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Button } from '../components/ui/Button'
-import { Input } from '../components/ui/Input'
-import { Card } from '../components/ui/Card'
 import { getAuthErrorMessage } from '../utils/authErrors'
 import { PageMeta } from '../components/seo/PageMeta'
 
@@ -31,22 +28,22 @@ export default function SignUp() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+    <main className="page center auth-shell">
       <PageMeta
         title="Create Account"
         description="Create a free Web Trivia account to host and join multiplayer trivia games with your friends."
         path="/sign-up"
       />
-      <div className="w-full max-w-sm flex flex-col gap-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-white">Create Account</h1>
-          <p className="text-gray-400 mt-1 text-sm">Join the game</p>
+      <div className="panel elevated-panel auth-panel stack">
+        <div>
+          <div className="eyebrow">Join the game</div>
+          <h1 className="auth-title">Create Account</h1>
         </div>
 
-        <Card>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <Input
-              label="Display Name"
+        <form onSubmit={handleSubmit} className="stack compact-stack">
+          <label className="stack" style={{ gap: '0.4rem' }}>
+            <span className="eyebrow" style={{ marginBottom: 0 }}>Display Name</span>
+            <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -56,16 +53,20 @@ export default function SignUp() {
               autoComplete="nickname"
               required
             />
-            <Input
-              label="Email"
+          </label>
+          <label className="stack" style={{ gap: '0.4rem' }}>
+            <span className="eyebrow" style={{ marginBottom: 0 }}>Email</span>
+            <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
               required
             />
-            <Input
-              label="Password"
+          </label>
+          <label className="stack" style={{ gap: '0.4rem' }}>
+            <span className="eyebrow" style={{ marginBottom: 0 }}>Password</span>
+            <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -74,18 +75,16 @@ export default function SignUp() {
               autoComplete="new-password"
               required
             />
-            {error && <p role="alert" className="text-red-400 text-sm">{error}</p>}
-            <Button type="submit" loading={loading} size="lg" className="w-full mt-1">
-              Create Account
-            </Button>
-          </form>
-        </Card>
+          </label>
+          {error && <p className="error">{error}</p>}
+          <button type="submit" className="btn-lg" disabled={loading}>
+            {loading ? 'Creating account…' : 'Create Account'}
+          </button>
+        </form>
 
-        <p className="text-sm text-gray-500 text-center">
+        <p className="muted" style={{ textAlign: 'center', fontSize: '0.88rem' }}>
           Already have an account?{' '}
-          <Link to="/sign-in" className="text-indigo-400 hover:text-indigo-300">
-            Sign in
-          </Link>
+          <Link to="/sign-in" style={{ color: 'var(--gold)' }}>Sign in</Link>
         </p>
       </div>
     </main>
