@@ -1,40 +1,25 @@
-export type Difficulty = 'easy' | 'medium' | 'hard'
-
-export interface TypedQuestion {
+export interface TriviaQuestion {
   id: string
-  text: string
-  answer: string
-  acceptableAnswers: string[]
   category: string
-  difficulty: Difficulty
-  timeLimit: number
+  difficulty: number          // 1–6, maps to board row
+  value: number               // dollar value (100, 200 … 600)
+  clue: string                // statement form: "He was the first president…"
+  acceptedAnswers: string[]   // pre-normalised lowercase variants
+  tags?: string[]
+  isFinalEligible?: boolean
 }
 
-export interface MultipleChoiceQuestion {
+export interface QuestionPack {
   id: string
-  text: string
-  answer: string
-  options: [string, string, string, string]
-  correctIndex: 0 | 1 | 2 | 3
-  category: string
-  difficulty: Difficulty
-  timeLimit: number
+  name: string
+  description?: string
+  categories: string[]
+  questions: TriviaQuestion[]
 }
 
-export type Question = TypedQuestion | MultipleChoiceQuestion
-
-export function isMultipleChoice(q: Question): q is MultipleChoiceQuestion {
-  return 'options' in q
-}
-
-export interface QuestionSet {
-  id: string
-  ownerId: string | null
-  title: string
-  description: string
-  isPublic: boolean
-  isBuiltIn: boolean
-  compatibleModes: string[]
-  questions: Question[]
-  createdAt: number
+export interface BoardQuestion extends TriviaQuestion {
+  row: number
+  col: number
+  revealed: boolean
+  answeredCorrectlyBy?: string | null
 }
