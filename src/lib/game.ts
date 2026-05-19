@@ -13,7 +13,7 @@ import {
   SystemMessage,
   BoardMap,
 } from '../types/game'
-import { QuestionPack, BoardQuestion, TriviaQuestion } from '../types/question'
+import { QuestionPack, BoardQuestion } from '../types/question'
 import { matchAnswer, normalizeAnswer } from './fuzzy'
 
 // ─────────────────────────────────────────────────────────────────────────────

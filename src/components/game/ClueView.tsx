@@ -16,7 +16,7 @@ interface Props {
 // reveal started and how fast it runs.  Clients all compute this independently
 // so no per-character Firestore writes are needed.
 function useRevealedText(cs: ClueState): string {
-  const [tick, setTick] = useState(0)
+  const [, setTick] = useState(0)
   useEffect(() => {
     if (cs.status !== 'revealing' && cs.status !== 'answering') return
     const id = setInterval(() => setTick((t) => t + 1), 50)
@@ -26,8 +26,6 @@ function useRevealedText(cs: ClueState): string {
   const elapsed = Date.now() - cs.revealStartedAt
   const chars = Math.min(cs.fullText.length, Math.floor(elapsed / cs.revealSpeedMs))
   return cs.fullText.slice(0, chars)
-  // tick intentionally used only to force re-render
-  // eslint-disable-next-line react-hooks/exhaustive-deps
 }
 
 function useBuzzDeadlineCountdown(cs: ClueState): number {
@@ -73,7 +71,6 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
 
   const isActiveAnswerer = cs.activeAnswerPlayerId === user.uid
   const myAnswer = cs.submittedAnswers[user.uid]
-  const isAnswering = (cs.status === 'answering' || cs.status === 'buzzed') && !myAnswer
 
   // Host timeout monitoring
   const onHostTimeoutRef = useRef(onHostTimeout)

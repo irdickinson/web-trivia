@@ -6,13 +6,23 @@ import { generateRoomCode } from '../utils/roomCode'
 import { sanitizeDisplayName } from '../utils/sanitize'
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  mode: 'classic',
+  mode: 'jeopardy',
   questionSetId: 'built-in',
-  totalQuestions: 10,
-  secondsPerQuestion: 30,
-  revealDurationMs: 5000,
-  postRevealWindowMs: 15000,
-  speedBonusEnabled: true,
+  categoryCount: 6,
+  questionCountPerCategory: 5,
+  pointValues: [100, 200, 300, 400, 500],
+  revealSpeedMs: 40,
+  answerTimeSeconds: 15,
+  postRevealBuzzSeconds: 5,
+  allowNegativeScores: true,
+  deductOnWrongAnswer: true,
+  typoTolerance: true,
+  variantMatching: true,
+  progressiveReveal: true,
+  allowBuzzRebound: true,
+  enableFinalRound: true,
+  finalQuestionCount: 3,
+  maxPlayers: 10,
 }
 
 export async function createRoom(
@@ -20,7 +30,6 @@ export async function createRoom(
   displayName: string,
   settings: GameSettings = DEFAULT_SETTINGS,
 ): Promise<string> {
-  // Find an unused code — collision probability is negligible but handle it
   let code = generateRoomCode()
   for (let i = 0; i < 5; i++) {
     const snap = await getDoc(doc(db, 'rooms', code))
@@ -32,7 +41,7 @@ export async function createRoom(
   const room: Room = {
     code,
     hostId: host.uid,
-    status: 'lobby',
+    phase: 'lobby',
     settings,
     players: {
       [host.uid]: {
@@ -43,7 +52,12 @@ export async function createRoom(
         isAnonymous: host.isAnonymous,
       },
     },
-    currentQuestion: null,
+    board: {},
+    currentChooserId: null,
+    chooserRotationIndex: 0,
+    clueState: null,
+    finalRound: null,
+    messages: [],
     createdAt: now,
     expiresAt: now + 2 * 60 * 60 * 1000,
   }
@@ -59,9 +73,11 @@ export async function joinRoom(code: string, user: User, displayName: string): P
   if (!snap.exists()) throw new Error('Room not found. Check the code and try again.')
 
   const room = snap.data() as Room
-  if (room.status !== 'lobby') throw new Error('This game has already started.')
-  if (Object.keys(room.players).length >= 20) throw new Error('This room is full.')
-  if (room.players[user.uid]) return // already joined, navigate without re-writing
+  if (room.phase !== 'lobby') throw new Error('This game has already started.')
+  if (Object.keys(room.players).length >= room.settings.maxPlayers) {
+    throw new Error('This room is full.')
+  }
+  if (room.players[user.uid]) return
 
   await updateDoc(roomRef, {
     [`players.${user.uid}`]: {
