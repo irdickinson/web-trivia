@@ -1,5 +1,4 @@
 import { Player } from '../../types/game'
-import { Button } from '../ui/Button'
 
 interface Props {
   players: Record<string, Player>
@@ -7,48 +6,55 @@ interface Props {
   onPlayAgain: () => void
 }
 
-const MEDALS = ['🥇', '🥈', '🥉']
+const RANK_SUFFIX = ['st', 'nd', 'rd']
 
 export function GameFinished({ players, currentUid, onPlayAgain }: Props) {
   const sorted = Object.values(players).sort((a, b) => b.score - a.score)
   const myRank = sorted.findIndex((p) => p.uid === currentUid) + 1
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 gap-8">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold">Game Over</h1>
-        {myRank > 0 && (
-          <p className="text-gray-400 mt-2">
-            You finished {myRank === 1 ? '1st' : myRank === 2 ? '2nd' : myRank === 3 ? '3rd' : `${myRank}th`}
-            {myRank === 1 ? ' 🎉' : ''}
-          </p>
-        )}
-      </div>
+    <main className="page center" style={{ padding: '2rem' }}>
+      <div className="panel elevated-panel stack" style={{ width: 'min(540px, 94vw)', padding: '1.75rem' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="eyebrow">Game over</div>
+          <h1 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', fontWeight: 900, letterSpacing: '0.01em' }}>
+            Final Scores
+          </h1>
+          {myRank > 0 && (
+            <p className="muted" style={{ marginTop: '0.35rem' }}>
+              You finished {myRank}{RANK_SUFFIX[myRank - 1] ?? 'th'}
+              {myRank === 1 ? ' — well played!' : ''}
+            </p>
+          )}
+        </div>
 
-      <div className="w-full max-w-sm flex flex-col gap-2">
-        {sorted.map((player, i) => (
-          <div
-            key={player.uid}
-            className={`flex items-center gap-4 rounded-xl p-4 ${
-              player.uid === currentUid
-                ? 'bg-indigo-500/15 border border-indigo-500/30'
-                : i === 0
-                  ? 'bg-yellow-500/10 border border-yellow-500/20'
-                  : 'bg-gray-800'
-            }`}
-          >
-            <span className="w-8 text-center text-xl">{MEDALS[i] ?? i + 1}</span>
-            <span className="flex-1 font-medium truncate">{player.name}</span>
-            <span className={`font-mono font-bold text-lg tabular-nums ${player.score < 0 ? 'text-red-400' : 'text-indigo-400'}`}>
-              ${player.score.toLocaleString()}
-            </span>
-          </div>
-        ))}
-      </div>
+        <div className="divider" />
 
-      <Button size="lg" onClick={onPlayAgain}>
-        Play Again
-      </Button>
-    </div>
+        <div className="stack compact-stack">
+          {sorted.map((player, i) => (
+            <div
+              key={player.uid}
+              className={`player-row scoreboard-row${player.uid === currentUid ? ' me' : ''}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}
+            >
+              <span className="rank-pill" style={{ minWidth: '2rem', textAlign: 'center' }}>{i + 1}</span>
+              <span style={{ flex: 1, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {player.name}
+              </span>
+              <span
+                className="score-value"
+                style={player.score < 0 ? { color: 'var(--danger)' } : undefined}
+              >
+                ${player.score.toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <button className="btn-lg" style={{ width: '100%' }} onClick={onPlayAgain}>
+          Play Again
+        </button>
+      </div>
+    </main>
   )
 }
