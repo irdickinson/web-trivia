@@ -60,7 +60,8 @@ export async function scoreAndReview(room: Room, questions: Question[]): Promise
     ? []
     : (question as TypedQuestion).acceptableAnswers
 
-  const updates: Record<string, unknown> = { 'currentQuestion.status': 'review' }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updates: Record<string, any> = { 'currentQuestion.status': 'review' }
 
   for (const [uid, entry] of Object.entries(q.answers)) {
     const isCorrect = isAnswerCorrect(entry.answer, correct, acceptable)
