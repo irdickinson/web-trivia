@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { User } from 'firebase/auth'
 import { Room } from '../../types/game'
 import { Question } from '../../types/question'
@@ -40,6 +40,20 @@ export function ClassicGame({ room, user, questions }: Props) {
   const hasSubmitted = !!myAnswer
   const totalAllowed = Math.min(questions.length, room.settings.totalQuestions)
   const isLastQuestion = q.index + 1 >= totalAllowed
+
+  const answerCount = Object.keys(q.answers).length
+  const playerCount = Object.keys(room.players).length
+
+  // Score immediately when every player has submitted — no need to wait for the timer
+  useEffect(() => {
+    if (!isHost || q.status !== 'active' || scoredRef.current) return
+    if (playerCount > 0 && answerCount >= playerCount) {
+      scoredRef.current = true
+      void scoreAndReview(room, questions)
+    }
+  // room and questions are intentionally omitted: scoredRef guards against stale double-calls
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answerCount, playerCount, isHost, q.status])
 
   async function handleTimerExpire() {
     if (!isHost || scoredRef.current) return
