@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /lobby
+Disallow: /room/
+Disallow: /upgrade
+
+Sitemap: https://web-trivia.web.app/sitemap.xml

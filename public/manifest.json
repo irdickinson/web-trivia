@@ -1,0 +1,17 @@
+{
+  "name": "Web Trivia",
+  "short_name": "Web Trivia",
+  "description": "Free multiplayer trivia game — create a room, share the code, and play with friends.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
