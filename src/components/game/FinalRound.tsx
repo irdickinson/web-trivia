@@ -45,10 +45,10 @@ function WagerPhase({
         </p>
       </div>
 
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-5 flex flex-col gap-4">
+      <div className="bg-blue-950/60 border border-blue-900/60 rounded-xl p-5 flex flex-col gap-4">
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Your score</span>
-          <span className="font-mono font-semibold text-indigo-300">${myScore.toLocaleString()}</span>
+          <span className="font-mono font-semibold text-yellow-400">${myScore.toLocaleString()}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Max wager</span>
@@ -68,7 +68,7 @@ function WagerPhase({
               step={100}
               value={wager}
               onChange={(e) => setWager(parseInt(e.target.value))}
-              className="w-full accent-indigo-500"
+              className="w-full accent-yellow-500"
             />
             <div className="flex items-center gap-3">
               <input
@@ -80,7 +80,7 @@ function WagerPhase({
                 onChange={(e) =>
                   setWager(Math.min(maxWager, Math.max(0, parseInt(e.target.value) || 0)))
                 }
-                className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white font-mono text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white font-mono text-center focus:outline-none focus:ring-2 focus:ring-yellow-500"
               />
               <Button
                 onClick={() => { setSubmitted(true); onSubmit(wager) }}
@@ -144,7 +144,7 @@ function AnswerPhase({
             <div key={q.id} className="flex flex-col gap-0.5">
               <p className="text-xs text-gray-500">{q.category}</p>
               <p className="text-sm text-gray-300">{q.clue}</p>
-              <p className="text-sm text-indigo-300 font-medium">
+              <p className="text-sm text-yellow-400 font-medium">
                 Your answer: {myEntry?.answers[q.id] ?? '—'}
               </p>
             </div>
@@ -155,10 +155,10 @@ function AnswerPhase({
           {fr.questions.map((q, i) => (
             <div
               key={q.id}
-              className="bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col gap-3"
+              className="bg-blue-950/60 border border-blue-900/60 rounded-xl p-4 flex flex-col gap-3"
             >
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-widest text-indigo-400">
+                <span className="text-xs font-bold uppercase tracking-widest text-blue-400">
                   {q.category}
                 </span>
                 <span className="text-xs text-gray-600">Q{i + 1}</span>
@@ -170,7 +170,7 @@ function AnswerPhase({
                   setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
                 }
                 placeholder="Your answer…"
-                className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
               />
             </div>
           ))}
@@ -220,9 +220,9 @@ function ResultsPhase({
 
       {/* Questions + answers */}
       {fr.questions.map((q, i) => (
-        <div key={q.id} className="bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col gap-3">
+        <div key={q.id} className="bg-blue-950/60 border border-blue-900/60 rounded-xl p-4 flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-indigo-400">{q.category}</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-blue-400">{q.category}</span>
             <span className="text-xs text-gray-600">Q{i + 1}</span>
           </div>
           <p className="text-sm text-white">{q.clue}</p>
@@ -234,7 +234,7 @@ function ResultsPhase({
               const player = room.players[uid]
               const ans = entry.answers[q.id] ?? '—'
               return (
-                <div key={uid} className={`flex items-center gap-2 text-xs ${uid === user.uid ? 'text-indigo-300' : 'text-gray-400'}`}>
+                <div key={uid} className={`flex items-center gap-2 text-xs ${uid === user.uid ? 'text-yellow-400' : 'text-gray-400'}`}>
                   <span className="w-24 truncate font-medium">{player?.name ?? uid}</span>
                   <span className="flex-1">{ans}</span>
                 </div>
@@ -253,7 +253,7 @@ function ResultsPhase({
             <div
               key={p.uid}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg ${
-                p.uid === user.uid ? 'bg-indigo-500/15 border border-indigo-500/30' : 'bg-gray-800'
+                p.uid === user.uid ? 'bg-blue-900/30 border border-blue-800/40' : 'bg-gray-800'
               }`}
             >
               <span className="w-6 text-sm text-gray-500">{i + 1}</span>
@@ -261,7 +261,7 @@ function ResultsPhase({
               {entry?.doubled && (
                 <span className="text-xs text-yellow-400 font-bold">DOUBLED</span>
               )}
-              <span className={`font-mono font-bold tabular-nums ${p.score < 0 ? 'text-red-400' : 'text-indigo-300'}`}>
+              <span className={`font-mono font-bold tabular-nums ${p.score < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
                 ${p.score.toLocaleString()}
               </span>
             </div>
@@ -294,7 +294,7 @@ export function FinalRound({ room, user, onSubmitWager, onSubmitAnswers, onRevea
   if (!fr) return null
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white p-4 flex flex-col items-center justify-center">
+    <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
       <div className="w-full max-w-lg">
         {fr.status === 'wager' && (
           <WagerPhase room={room} user={user} onSubmit={onSubmitWager} />
@@ -312,6 +312,6 @@ export function FinalRound({ room, user, onSubmitWager, onSubmitAnswers, onRevea
           />
         )}
       </div>
-    </main>
+    </div>
   )
 }

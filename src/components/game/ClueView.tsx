@@ -12,9 +12,8 @@ interface Props {
   onHostTimeout: () => void
 }
 
-// Compute how many characters should be visible right now based on when the
-// reveal started and how fast it runs.  Clients all compute this independently
-// so no per-character Firestore writes are needed.
+// ── Hooks ────────────────────────────────────────────────────────────────────
+
 function useRevealedText(cs: ClueState): string {
   const [, setTick] = useState(0)
   useEffect(() => {
@@ -22,31 +21,60 @@ function useRevealedText(cs: ClueState): string {
     const id = setInterval(() => setTick((t) => t + 1), 50)
     return () => clearInterval(id)
   }, [cs.status, cs.revealStartedAt])
-
   const elapsed = Date.now() - cs.revealStartedAt
   const chars = Math.min(cs.fullText.length, Math.floor(elapsed / cs.revealSpeedMs))
   return cs.fullText.slice(0, chars)
 }
 
-function useBuzzDeadlineCountdown(cs: ClueState): number {
+function useDeadlineMs(deadline: number | null | undefined): number {
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 250)
+    const id = setInterval(() => setNow(Date.now()), 100)
     return () => clearInterval(id)
   }, [])
-  if (!cs.buzzDeadline) return 0
-  return Math.max(0, cs.buzzDeadline - now)
+  if (!deadline) return 0
+  return Math.max(0, deadline - now)
 }
 
-function useAnswerDeadlineCountdown(cs: ClueState): number {
-  const [now, setNow] = useState(Date.now)
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 250)
-    return () => clearInterval(id)
-  }, [])
-  if (!cs.answerDeadline) return 0
-  return Math.max(0, cs.answerDeadline - now)
+// ── Timer bar ────────────────────────────────────────────────────────────────
+
+function TimerBar({
+  label,
+  secsLeft,
+  percent,
+  variant,
+}: {
+  label: string
+  secsLeft: number
+  percent: number
+  variant: 'answer' | 'buzz'
+}) {
+  const urgent = variant === 'answer' && secsLeft <= 3
+  return (
+    <div className="flex flex-col gap-0.5 min-w-[80px]">
+      <div className="flex justify-between items-center gap-2">
+        <span className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">{label}</span>
+        <span className={`text-xs font-mono font-bold tabular-nums ${urgent ? 'text-red-400' : 'text-white'}`}>
+          {secsLeft.toFixed(1)}s
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-none ${
+            variant === 'buzz'
+              ? 'bg-blue-500'
+              : urgent
+                ? 'bg-red-500'
+                : 'bg-yellow-400'
+          }`}
+          style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
+        />
+      </div>
+    </div>
+  )
 }
+
+// ── Main component ───────────────────────────────────────────────────────────
 
 export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, onHostTimeout }: Props) {
   const cs = room.clueState!
@@ -55,8 +83,8 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
   const isJeopardy = mode === 'jeopardy'
 
   const revealedText = useRevealedText(cs)
-  const buzzMsLeft = useBuzzDeadlineCountdown(cs)
-  const answerMsLeft = useAnswerDeadlineCountdown(cs)
+  const buzzMsLeft = useDeadlineMs(cs.buzzDeadline)
+  const answerMsLeft = useDeadlineMs(cs.answerDeadline)
   const isFullyRevealed = revealedText.length >= cs.fullText.length
 
   const [answer, setAnswer] = useState('')
@@ -72,7 +100,7 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
   const isActiveAnswerer = cs.activeAnswerPlayerId === user.uid
   const myAnswer = cs.submittedAnswers[user.uid]
 
-  // Host timeout monitoring
+  // Host drives deadline transitions
   const onHostTimeoutRef = useRef(onHostTimeout)
   useEffect(() => { onHostTimeoutRef.current = onHostTimeout })
 
@@ -89,18 +117,18 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
     return () => clearInterval(id)
   }, [isHost, cs.status, cs.buzzDeadline, cs.answerDeadline])
 
-  // Classic/speed: transition from revealing → answering once fully revealed (host only)
+  // Classic/speed: transition revealing → answering once fully revealed (host)
   const hostTransitionedRef = useRef(false)
   useEffect(() => {
     if (!isHost || isJeopardy || hostTransitionedRef.current) return
     if (isFullyRevealed && cs.status === 'revealing') {
       hostTransitionedRef.current = true
-      onHostTimeoutRef.current() // reuse — game.ts will flip to 'answering'
+      onHostTimeoutRef.current()
     }
   }, [isFullyRevealed, cs.status, isHost, isJeopardy])
   useEffect(() => { hostTransitionedRef.current = false }, [cs.questionId])
 
-  // Focus answer input when it's our turn
+  // Focus input when it's our turn
   useEffect(() => {
     if ((isActiveAnswerer || (cs.status === 'answering' && !myAnswer)) && inputRef.current) {
       inputRef.current.focus()
@@ -119,84 +147,74 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
     if (e.key === 'Enter') void handleSubmit()
   }
 
-  const buzzSecsLeft = Math.ceil(buzzMsLeft / 1000)
-  const answerSecsLeft = Math.ceil(answerMsLeft / 1000)
-  const revealProgress = cs.fullText.length ? revealedText.length / cs.fullText.length : 0
+  const totalBuzzMs = cs.fullText.length * cs.revealSpeedMs + room.settings.postRevealBuzzSeconds * 1000
+  const buzzPercent = cs.buzzDeadline ? (buzzMsLeft / totalBuzzMs) * 100 : 0
+  const answerPercent = cs.answerDeadline ? (answerMsLeft / (room.settings.answerTimeSeconds * 1000)) * 100 : 0
+  const buzzSecsLeft = buzzMsLeft / 1000
+  const answerSecsLeft = answerMsLeft / 1000
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800">
-        <div>
-          <span className="text-xs font-bold uppercase tracking-widest text-indigo-400">
+    <div className="flex-1 flex flex-col min-h-0">
+      {/* Clue header strip */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-blue-950/60 border-b border-blue-900/40">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-black uppercase tracking-widest text-blue-300">
             {cs.category}
           </span>
-          <span className="ml-3 text-yellow-300 font-bold">${cs.value}</span>
+          <span className="text-yellow-400 font-black text-lg">${cs.value}</span>
         </div>
+
+        {/* Timer bars */}
         <div className="flex items-center gap-4">
           {cs.status === 'revealing' && isJeopardy && cs.buzzDeadline && buzzMsLeft > 0 && (
-            <div className="flex items-center gap-2">
-              <div className="w-24 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-indigo-500 rounded-full transition-none"
-                  style={{ width: `${(buzzMsLeft / (room.settings.postRevealBuzzSeconds * 1000 + cs.fullText.length * cs.revealSpeedMs)) * 100}%` }}
-                />
-              </div>
-              <span className="text-xs text-gray-400 tabular-nums w-8">{buzzSecsLeft}s</span>
-            </div>
+            <TimerBar label="Buzz window" secsLeft={buzzSecsLeft} percent={buzzPercent} variant="buzz" />
           )}
-          {cs.status === 'buzzed' && cs.answerDeadline && (
-            <div className="flex items-center gap-2">
-              <div className="w-24 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-none ${answerSecsLeft <= 3 ? 'bg-red-500' : 'bg-yellow-400'}`}
-                  style={{ width: `${(answerMsLeft / (room.settings.answerTimeSeconds * 1000)) * 100}%` }}
-                />
-              </div>
-              <span className={`text-xs tabular-nums w-8 ${answerSecsLeft <= 3 ? 'text-red-400' : 'text-yellow-300'}`}>
-                {answerSecsLeft}s
-              </span>
-            </div>
+          {(cs.status === 'buzzed' || cs.status === 'answering') && cs.answerDeadline && answerMsLeft > 0 && (
+            <TimerBar label="Answer" secsLeft={answerSecsLeft} percent={answerPercent} variant="answer" />
           )}
         </div>
       </div>
 
-      {/* Clue area */}
+      {/* Main clue area */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 gap-8">
-        {/* Reveal progress bar */}
+        {/* Reveal progress */}
         {!isFullyRevealed && (
-          <div className="w-full max-w-2xl h-1 bg-gray-800 rounded-full overflow-hidden">
+          <div className="w-full max-w-2xl h-0.5 bg-gray-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-indigo-600 rounded-full transition-none"
-              style={{ width: `${revealProgress * 100}%` }}
+              className="h-full bg-blue-600 rounded-full transition-none"
+              style={{ width: `${cs.fullText.length ? (revealedText.length / cs.fullText.length) * 100 : 0}%` }}
             />
           </div>
         )}
 
         {/* Clue text */}
-        <div className="w-full max-w-2xl text-center">
+        <div className="w-full max-w-2xl text-center px-4">
           <p className="text-2xl md:text-3xl font-medium leading-relaxed text-white min-h-[4rem]">
             {revealedText}
             {!isFullyRevealed && (
-              <span className="animate-pulse text-gray-600">▌</span>
+              <span className="animate-pulse text-blue-400">▌</span>
             )}
           </p>
         </div>
 
         {/* Status messages */}
         {cs.status === 'buzzed' && cs.activeAnswerPlayerId && (
-          <p className="text-sm text-yellow-300 font-medium">
-            {cs.activeAnswerPlayerId === user.uid
-              ? 'You buzzed in!'
+          <div className={`px-4 py-2 rounded-lg border font-bold text-sm ${
+            isActiveAnswerer
+              ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-300'
+              : 'bg-gray-800 border-gray-700 text-gray-400'
+          }`}>
+            {isActiveAnswerer
+              ? '🔔 You buzzed in! Type your answer.'
               : `${room.players[cs.activeAnswerPlayerId]?.name ?? 'Someone'} buzzed in!`}
-          </p>
+          </div>
         )}
 
         {cs.status === 'answering' && !isJeopardy && !myAnswer && (
-          <p className="text-sm text-gray-400">Everyone answer now!</p>
+          <p className="text-sm text-blue-300 font-medium">Everyone answer now!</p>
         )}
 
-        {/* Multiple choice options */}
+        {/* Multiple choice */}
         {mode === 'multiple-choice' && cs.status === 'answering' && cs.options && (
           <div className="grid grid-cols-2 gap-3 w-full max-w-lg">
             {cs.options.map((opt, idx) => (
@@ -204,15 +222,15 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
                 key={idx}
                 onClick={() => !myAnswer && onSubmitChoice(idx)}
                 disabled={!!myAnswer}
-                className={`px-4 py-3 rounded-xl border text-left text-sm font-medium transition-colors ${
+                className={`px-4 py-3 rounded-xl border-2 text-left text-sm font-medium transition-all ${
                   myAnswer === opt
-                    ? 'bg-indigo-600 border-indigo-400 text-white'
+                    ? 'bg-blue-700 border-blue-500 text-white'
                     : myAnswer
-                      ? 'bg-gray-800 border-gray-700 text-gray-500 cursor-default'
-                      : 'bg-gray-800 border-gray-600 text-gray-200 hover:border-indigo-500 hover:bg-gray-700 cursor-pointer'
+                      ? 'bg-gray-900 border-gray-800 text-gray-600 cursor-default'
+                      : 'bg-blue-900/40 border-blue-800 text-gray-200 hover:border-blue-600 hover:bg-blue-900/70 cursor-pointer active:scale-95'
                 }`}
               >
-                <span className="text-gray-500 mr-2">{String.fromCharCode(65 + idx)}.</span>
+                <span className="text-blue-500 mr-2 font-bold">{String.fromCharCode(65 + idx)}.</span>
                 {opt}
               </button>
             ))}
@@ -230,12 +248,13 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
               onKeyDown={handleKeyDown}
               placeholder={myAnswer ? `Submitted: ${myAnswer}` : 'Type your answer…'}
               disabled={!!myAnswer || submitting}
-              className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              className="flex-1 bg-gray-800 border-2 border-gray-700 focus:border-yellow-500 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none disabled:opacity-50 transition-colors"
             />
             <Button
               onClick={handleSubmit}
               disabled={!!myAnswer || !answer.trim() || submitting}
               loading={submitting}
+              className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold border-0"
             >
               Submit
             </Button>
@@ -246,29 +265,29 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
         {isEligibleToBuzz && isFullyRevealed && (
           <button
             onClick={onBuzz}
-            className="px-10 py-5 bg-yellow-500 hover:bg-yellow-400 active:scale-95 text-black font-black text-xl rounded-2xl shadow-xl shadow-yellow-900/40 transition-all"
+            className="px-12 py-5 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-black text-2xl rounded-2xl shadow-xl shadow-yellow-900/30 transition-all border-4 border-yellow-500"
           >
             BUZZ IN
           </button>
         )}
 
-        {/* My submitted answer confirmation */}
+        {/* Submitted confirmation */}
         {myAnswer && cs.status !== 'resolved' && (
-          <p className="text-sm text-gray-500">
-            Answer submitted: <span className="text-gray-300">{myAnswer}</span>
+          <p className="text-xs text-gray-600 uppercase tracking-widest">
+            Submitted: <span className="text-gray-400 normal-case">{myAnswer}</span>
           </p>
         )}
 
-        {/* Non-chooser waiting (jeopardy — reveal phase, no buzz yet shown) */}
+        {/* Not eligible to buzz */}
         {isJeopardy && cs.status === 'revealing' && !isEligibleToBuzz &&
           !cs.remainingEligiblePlayers.includes(user.uid) && (
-          <p className="text-sm text-gray-600">You are not eligible to buzz for this clue.</p>
+          <p className="text-xs text-gray-700">You are not eligible to buzz for this clue.</p>
         )}
 
-        {cs.status === 'buzzed' && !isActiveAnswerer && !myAnswer && (
+        {cs.status === 'buzzed' && !isActiveAnswerer && (
           <p className="text-sm text-gray-500">
             Waiting for{' '}
-            <span className="text-white">
+            <span className="text-white font-medium">
               {room.players[cs.activeAnswerPlayerId ?? '']?.name ?? 'player'}
             </span>{' '}
             to answer…
@@ -276,24 +295,24 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
         )}
       </div>
 
-      {/* Bottom: score strip */}
-      <div className="flex gap-3 justify-center px-4 py-3 bg-gray-900 border-t border-gray-800 overflow-x-auto">
+      {/* Bottom score strip */}
+      <div className="flex gap-2 justify-center px-4 py-2.5 bg-gray-900/80 border-t border-gray-800 overflow-x-auto shrink-0">
         {Object.values(room.players)
           .sort((a, b) => b.score - a.score)
           .map((p) => (
             <div
               key={p.uid}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg shrink-0 ${
-                p.uid === user.uid ? 'bg-indigo-500/20' : ''
+              className={`flex flex-col items-center gap-0 px-3 py-1 rounded-lg shrink-0 ${
+                p.uid === user.uid ? 'bg-blue-900/30 border border-blue-800/40' : ''
               }`}
             >
-              <span className="text-xs text-gray-400 truncate max-w-[6rem]">{p.name}</span>
-              <span className={`text-sm font-bold font-mono tabular-nums ${p.score < 0 ? 'text-red-400' : 'text-indigo-300'}`}>
+              <span className="text-[10px] text-gray-500 truncate max-w-[5rem]">{p.name}</span>
+              <span className={`text-sm font-black font-mono tabular-nums ${p.score < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
                 ${p.score.toLocaleString()}
               </span>
             </div>
           ))}
       </div>
-    </main>
+    </div>
   )
 }
