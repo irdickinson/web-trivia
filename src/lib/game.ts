@@ -328,6 +328,7 @@ async function evaluateJeopardyAnswer(
       [`board.r${cs.row}c${cs.col}.revealed`]: true,
       [`board.r${cs.row}c${cs.col}.answeredCorrectlyBy`]: uid,
       [`players.${uid}.score`]: newScore,
+      currentChooserId: uid,
       messages: arrayUnion(
         makeMessage(`${player?.name ?? uid} answered correctly! +$${cs.value}`),
       ),
@@ -424,6 +425,7 @@ export async function resolveClassicClue(room: Room): Promise<void> {
     'clueState.outcome': outcome,
     [`board.r${cs.row}c${cs.col}.revealed`]: true,
     [`board.r${cs.row}c${cs.col}.answeredCorrectlyBy`]: winnerId,
+    ...(winnerId ? { currentChooserId: winnerId } : {}),
     messages: arrayUnion(
       winnerId
         ? makeMessage(
@@ -578,14 +580,22 @@ export async function returnToBoard(room: Room): Promise<void> {
     return
   }
 
-  const nextChooserId = nextChooser(room)
+  // If someone answered correctly, they already became chooser at resolve time.
+  // Only rotate when no one answered.
+  const outcome = room.clueState?.outcome
+  const correctWinnerId = outcome?.wasCorrect ? outcome.winnerId : null
+
+  const nextChooserId = correctWinnerId ?? nextChooser(room)
+  const nextRotation = correctWinnerId
+    ? room.chooserRotationIndex
+    : (room.chooserRotationIndex + 1) % Object.keys(room.players).length
   const nextChooserPlayer = room.players[nextChooserId]
 
   await updateDoc(doc(db, 'rooms', room.code), {
     phase: 'board',
     clueState: null,
     currentChooserId: nextChooserId,
-    chooserRotationIndex: (room.chooserRotationIndex + 1) % Object.keys(room.players).length,
+    chooserRotationIndex: nextRotation,
     messages: arrayUnion(
       makeMessage(`${nextChooserPlayer?.name ?? 'Next player'} picks next.`),
     ),
@@ -742,4 +752,16 @@ export async function revealFinalResults(room: Room): Promise<void> {
 
 export async function finishGame(roomCode: string): Promise<void> {
   await updateDoc(doc(db, 'rooms', roomCode), { phase: 'finished' })
+}
+
+export async function returnToLobby(roomCode: string): Promise<void> {
+  await updateDoc(doc(db, 'rooms', roomCode), {
+    phase: 'lobby',
+    board: {},
+    clueState: null,
+    finalRound: null,
+    messages: [],
+    currentChooserId: null,
+    chooserRotationIndex: 0,
+  })
 }
