@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Button } from '../components/ui/Button'
 import { LoadingScreen } from '../components/ui/LoadingScreen'
 import { getAuthErrorMessage } from '../utils/authErrors'
 import { PageMeta } from '../components/seo/PageMeta'
@@ -28,66 +27,61 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 gap-8">
+    <main className="page center auth-shell">
       <PageMeta
         title="Free Multiplayer Trivia Game"
         description="Host a trivia room, share the code, and challenge your friends across History, Science, Geography, Pop Culture, and more. No download required."
         path="/"
       />
-      <div className="text-center">
-        <h1 className="text-6xl font-bold tracking-tight">Web Trivia</h1>
-        <p className="text-gray-400 mt-3 text-lg">
-          Host a game. Join by code. Test your knowledge.
-        </p>
-      </div>
+      <div className="panel elevated-panel auth-panel stack">
+        <div className="stack" style={{ gap: '0.25rem' }}>
+          <div className="eyebrow">Multiplayer trivia</div>
+          <h1 className="auth-title show-title">Web Trivia</h1>
+          <p className="muted auth-copy">
+            Host a game. Join by code. Test your knowledge.
+          </p>
+        </div>
 
-      {user ? (
-        <div className="flex flex-col items-center gap-4 w-full max-w-xs">
-          <Link to="/lobby" className="w-full">
-            <Button size="lg" className="w-full">Play Now</Button>
-          </Link>
-          {isAnonymous && (
-            <Link
-              to="/upgrade"
-              className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
-            >
-              Save your progress → create an account
+        <div className="divider" />
+
+        {user ? (
+          <div className="stack compact-stack">
+            <Link to="/lobby">
+              <button className="btn-lg" style={{ width: '100%' }}>
+                Play Now
+              </button>
             </Link>
-          )}
-          <button
-            onClick={signOut}
-            className="text-sm text-gray-500 hover:text-gray-400 transition-colors"
-          >
-            Sign out
-          </button>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-          <Link to="/sign-in" className="w-full">
-            <Button size="lg" className="w-full">Sign In</Button>
-          </Link>
-          <Link to="/sign-up" className="w-full">
-            <Button variant="secondary" size="lg" className="w-full">
-              Create Account
-            </Button>
-          </Link>
-          <div className="flex items-center gap-3 w-full my-1">
-            <hr className="flex-1 border-gray-700" />
-            <span className="text-xs text-gray-500">or</span>
-            <hr className="flex-1 border-gray-700" />
+            {isAnonymous && (
+              <Link to="/upgrade">
+                <button className="secondary ghost" style={{ fontSize: '0.88rem' }}>
+                  Save progress → create an account
+                </button>
+              </Link>
+            )}
+            <button className="ghost secondary" style={{ fontSize: '0.85rem', opacity: 0.6 }} onClick={signOut}>
+              Sign out
+            </button>
           </div>
-          <Button
-            variant="ghost"
-            size="lg"
-            className="w-full"
-            loading={guestLoading}
-            onClick={handlePlayAsGuest}
-          >
-            Play as Guest
-          </Button>
-          {error && <p role="alert" className="text-red-400 text-sm text-center">{error}</p>}
-        </div>
-      )}
+        ) : (
+          <div className="stack compact-stack">
+            <Link to="/sign-in">
+              <button className="btn-lg" style={{ width: '100%' }}>Sign In</button>
+            </Link>
+            <Link to="/sign-up">
+              <button className="secondary btn-lg" style={{ width: '100%' }}>Create Account</button>
+            </Link>
+            <div className="divider" />
+            <button
+              className="ghost btn-lg"
+              onClick={handlePlayAsGuest}
+              disabled={guestLoading}
+            >
+              {guestLoading ? 'Joining…' : 'Play as Guest'}
+            </button>
+            {error && <p className="error">{error}</p>}
+          </div>
+        )}
+      </div>
     </main>
   )
 }

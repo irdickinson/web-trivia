@@ -32,7 +32,7 @@ interface Props {
 
 type FlashKind = 'correct' | 'incorrect' | 'timeout'
 
-// ── Shared game header ───────────────────────────────────────────────────────
+// ── Game header ───────────────────────────────────────────────────────────────
 
 interface HeaderProps {
   room: Room
@@ -49,78 +49,68 @@ function GameHeader({ room, user, audio, isHost, onBackToLobby }: HeaderProps) {
   const activeAnswerer = cs?.activeAnswerPlayerId ? room.players[cs.activeAnswerPlayerId] : null
 
   return (
-    <header className="flex items-center justify-between gap-3 px-4 py-2 bg-gray-900 border-b border-gray-800 shrink-0">
+    <header className="topbar panel elevated-panel">
       {/* Status chips */}
-      <div className="flex items-center gap-2 overflow-x-auto min-w-0">
+      <div className="row gap wrap">
         {me && (
-          <div className="flex flex-col items-center shrink-0 px-2.5 py-1 rounded-lg bg-blue-900 border border-blue-700">
-            <span className="text-[9px] text-blue-400 uppercase tracking-widest font-bold">You</span>
-            <span className="text-xs font-bold text-white leading-tight">{me.name}</span>
-            <span className={`text-[11px] font-mono font-bold leading-tight ${me.score < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
+          <div className="hero-chip primary-chip">
+            <span className="chip-label">You</span>
+            <span style={{ fontWeight: 700 }}>{me.name}</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 800, color: me.score < 0 ? 'var(--danger)' : 'var(--gold)' }}>
               ${me.score.toLocaleString()}
             </span>
           </div>
         )}
         {chooser && chooser.uid !== user.uid && (
-          <div className="flex flex-col items-center shrink-0 px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700">
-            <span className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">Chooser</span>
-            <span className="text-xs font-bold text-white leading-tight">{chooser.name}</span>
+          <div className="hero-chip">
+            <span className="chip-label">Chooser</span>
+            <span style={{ fontWeight: 600 }}>{chooser.name}</span>
           </div>
         )}
         {activeAnswerer && (
-          <div className="flex flex-col items-center shrink-0 px-2.5 py-1 rounded-lg bg-yellow-900/40 border border-yellow-700/60">
-            <span className="text-[9px] text-yellow-400 uppercase tracking-widest font-bold">Answering</span>
-            <span className="text-xs font-bold text-white leading-tight">{activeAnswerer.name}</span>
+          <div className="hero-chip answering-chip">
+            <span className="chip-label">Answering</span>
+            <span style={{ fontWeight: 600 }}>{activeAnswerer.name}</span>
           </div>
         )}
       </div>
 
-      {/* Audio controls + back to lobby */}
-      <div className="flex items-center gap-1 shrink-0">
-        <span className="text-[10px] text-gray-600 hidden sm:block max-w-[6rem] truncate">{audio.trackName}</span>
-        <button
-          onClick={audio.prevTrack}
-          className="p-1 rounded text-gray-500 hover:text-gray-300 hover:bg-gray-800 text-xs"
-          title="Previous track"
-        >
-          ◀◀
-        </button>
-        <button
-          onClick={audio.toggleMusic}
-          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 text-sm"
-          title={audio.musicPaused ? 'Play music' : 'Pause music'}
-        >
-          {audio.musicPaused ? '▶' : '⏸'}
-        </button>
-        <button
-          onClick={audio.nextTrack}
-          className="p-1 rounded text-gray-500 hover:text-gray-300 hover:bg-gray-800 text-xs"
-          title="Next track"
-        >
-          ▶▶
-        </button>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.05}
-          value={audio.musicVol}
-          onChange={(e) => audio.setMusicVol(parseFloat(e.target.value))}
-          className="w-14 accent-blue-500 hidden sm:block"
-          title="Music volume"
-        />
-        <button
-          onClick={audio.toggleSfx}
-          className={`p-1.5 rounded text-xs font-bold ${audio.sfxEnabled ? 'text-blue-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-800'}`}
-          title={audio.sfxEnabled ? 'Mute SFX' : 'Unmute SFX'}
-        >
-          {audio.sfxEnabled ? '🔊' : '🔇'}
-        </button>
+      {/* Audio controls + lobby */}
+      <div className="topbar-actions">
+        <div className="panellet music-control">
+          <div className="music-row">
+            <button className="secondary mini-btn" onClick={audio.prevTrack} title="Previous track">◀</button>
+            <button className="secondary mini-btn" onClick={audio.toggleMusic} title={audio.musicPaused ? 'Play' : 'Pause'}>
+              {audio.musicPaused ? '▶' : '⏸'}
+            </button>
+            <button className="secondary mini-btn" onClick={audio.nextTrack} title="Next track">▶</button>
+            <button
+              className="secondary mini-btn"
+              onClick={audio.toggleSfx}
+              title={audio.sfxEnabled ? 'Mute SFX' : 'Unmute SFX'}
+              style={{ opacity: audio.sfxEnabled ? 1 : 0.4 }}
+            >
+              {audio.sfxEnabled ? '🔊' : '🔇'}
+            </button>
+          </div>
+          <div className="row gap" style={{ alignItems: 'center' }}>
+            <span className="mini-track-name" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {audio.trackName}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={audio.musicVol}
+              onChange={(e) => audio.setMusicVol(parseFloat(e.target.value))}
+              style={{ flex: '0 0 64px' }}
+              title="Music volume"
+            />
+          </div>
+        </div>
         {isHost && (
-          <button
-            onClick={onBackToLobby}
-            className="ml-2 px-2.5 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 border border-gray-700 hover:border-gray-600 transition-colors"
-          >
+          <button className="danger mini-btn" onClick={onBackToLobby}>
             ← Lobby
           </button>
         )}
@@ -133,24 +123,86 @@ function GameHeader({ room, user, audio, isHost, onBackToLobby }: HeaderProps) {
 
 function EndConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl p-6 flex flex-col gap-4">
-        <h2 className="text-xl font-bold text-white text-center">Return to lobby?</h2>
-        <p className="text-gray-400 text-sm text-center">The current game will end for all players.</p>
-        <div className="flex gap-3">
-          <button
-            onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-lg bg-red-700 hover:bg-red-600 text-white font-semibold text-sm transition-colors"
-          >
-            Confirm
-          </button>
-          <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold text-sm transition-colors"
-          >
-            Cancel
-          </button>
+    <div className="review-modal">
+      <div className="panel elevated-panel stack review-card" style={{ textAlign: 'center' }}>
+        <div>
+          <h2 style={{ fontWeight: 900 }}>Return to lobby?</h2>
+          <p className="muted" style={{ marginTop: '0.35rem', fontSize: '0.9rem' }}>
+            The current game will end for all players.
+          </p>
         </div>
+        <div className="row gap">
+          <button className="danger btn-lg" style={{ flex: 1 }} onClick={onConfirm}>Confirm</button>
+          <button className="secondary btn-lg" style={{ flex: 1 }} onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Scoreboard (info rail) ────────────────────────────────────────────────────
+
+function Scoreboard({ room, user }: { room: Room; user: User }) {
+  const sorted = Object.values(room.players).sort((a, b) => b.score - a.score)
+  const answering = room.clueState?.activeAnswerPlayerId
+
+  return (
+    <div className="panel elevated-panel stack">
+      <div className="rail-header">
+        <div className="eyebrow" style={{ marginBottom: 0 }}>Scores</div>
+      </div>
+      <div className="scoreboard-list stack compact-stack">
+        {sorted.map((p, i) => {
+          const isMe = p.uid === user.uid
+          const isChooser = p.uid === room.currentChooserId
+          const isAnswering = p.uid === answering
+          return (
+            <div
+              key={p.uid}
+              className={`player-row scoreboard-row${isMe ? ' me' : ''}${isAnswering ? ' active' : ''}`}
+            >
+              <div className="player-name-block">
+                <span className="rank-pill">{i + 1}</span>
+                <div>
+                  <span style={{ fontWeight: 600 }}>{p.name}</span>
+                  <div className="player-meta">
+                    {p.isHost && <span className="tag">Host</span>}
+                    {isChooser && <span className="tag chooser-tag">Chooser</span>}
+                    {isAnswering && <span className="tag answer-tag">Answering</span>}
+                  </div>
+                </div>
+              </div>
+              <div className="score-actions">
+                <span className="score-value" style={p.score < 0 ? { color: 'var(--danger)' } : undefined}>
+                  ${p.score.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Activity log (info rail) ──────────────────────────────────────────────────
+
+function ActivityLog({ room }: { room: Room }) {
+  return (
+    <div className="panel elevated-panel stack">
+      <div className="eyebrow" style={{ marginBottom: '0.5rem' }}>Activity</div>
+      <div className="log-panel stack compact-stack">
+        {[...room.messages].reverse().slice(0, 12).map((msg) => (
+          <div
+            key={msg.id}
+            className={`msg${msg.type === 'override' ? ' override' : msg.type === 'warning' ? ' warning' : ''}`}
+          >
+            {msg.text}
+          </div>
+        ))}
+        {room.messages.length === 0 && (
+          <p className="muted" style={{ fontSize: '0.82rem' }}>No activity yet.</p>
+        )}
       </div>
     </div>
   )
@@ -166,12 +218,11 @@ export function JeopardyGame({ room, user, pack }: Props) {
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [resultFlash, setResultFlash] = useState<FlashKind | null>(null)
 
-  // Track which clue outcomes we've already processed for SFX/flash/auto-transition
   const processedOutcomeRef = useRef<string | null>(null)
   const flashTimerRef = useRef<number | null>(null)
   const transitionTimerRef = useRef<number | null>(null)
 
-  // Detect when a clue resolves → play SFX, flash, schedule auto-transition
+  // Detect clue resolution → SFX + flash class + host auto-transition
   useEffect(() => {
     const cs = room.clueState
     if (!cs || cs.status !== 'resolved' || !cs.outcome) return
@@ -190,15 +241,12 @@ export function JeopardyGame({ room, user, pack }: Props) {
 
     setResultFlash(kind)
     if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current)
-    flashTimerRef.current = window.setTimeout(() => setResultFlash(null), 800)
+    flashTimerRef.current = window.setTimeout(() => setResultFlash(null), 900)
 
-    // Host drives auto-transition (2200ms correct, 1800ms wrong/timeout)
     if (isHost) {
       if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current)
       const delay = kind === 'correct' ? 2200 : 1800
-      transitionTimerRef.current = window.setTimeout(() => {
-        void handleContinue()
-      }, delay)
+      transitionTimerRef.current = window.setTimeout(() => { void handleContinue() }, delay)
     }
 
     return () => {
@@ -208,17 +256,15 @@ export function JeopardyGame({ room, user, pack }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.clueState?.status, room.clueState?.questionId, isHost])
 
-  // Play tick SFX when answer timer hits ≤5 seconds
+  // Tick SFX when answer timer ≤ 5s
   const prevAnswerSecsRef = useRef<number | null>(null)
   useEffect(() => {
     const cs = room.clueState
     if (!cs?.answerDeadline) { prevAnswerSecsRef.current = null; return }
     const secsLeft = Math.ceil((cs.answerDeadline - Date.now()) / 1000)
-    if (secsLeft <= 5 && secsLeft > 0) {
-      if (prevAnswerSecsRef.current !== secsLeft) {
-        audio.playSfx('tick')
-        prevAnswerSecsRef.current = secsLeft
-      }
+    if (secsLeft <= 5 && secsLeft > 0 && prevAnswerSecsRef.current !== secsLeft) {
+      audio.playSfx('tick')
+      prevAnswerSecsRef.current = secsLeft
     }
   })
 
@@ -299,22 +345,11 @@ export function JeopardyGame({ room, user, pack }: Props) {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const showOutcomeCard = phase === 'clue' && room.clueState?.status === 'resolved'
+  const showBoard = phase === 'board' || phase === 'clue'
+  const showFinal = phase === 'final-wager' || phase === 'final-answer' || phase === 'final-results'
 
   return (
-    <div className="min-h-screen bg-[#0a0a1e] text-white flex flex-col">
-      {/* Full-screen result flash */}
-      {resultFlash && (
-        <div
-          className={`fixed inset-0 z-40 flash-overlay ${
-            resultFlash === 'correct'
-              ? 'bg-green-500/50'
-              : resultFlash === 'incorrect'
-                ? 'bg-red-500/50'
-                : 'bg-orange-400/40'
-          }`}
-        />
-      )}
-
+    <div className={`page game-page${resultFlash ? ` flash-${resultFlash}` : ''}`}>
       <GameHeader
         room={room}
         user={user}
@@ -323,45 +358,48 @@ export function JeopardyGame({ room, user, pack }: Props) {
         onBackToLobby={() => setShowEndConfirm(true)}
       />
 
-      <div className="flex-1 flex flex-col min-h-0">
-        {(phase === 'board' || phase === 'clue') && (
-          <>
-            {phase === 'board' && (
-              <BoardView room={room} user={user} onSelectClue={handleSelectClue} />
-            )}
-            {phase === 'clue' && (
-              <ClueView
-                room={room}
-                user={user}
-                onBuzz={handleBuzz}
-                onSubmitAnswer={handleSubmitAnswer}
-                onSubmitChoice={handleSubmitChoice}
-                onHostTimeout={handleHostTimeout}
-              />
-            )}
-            {showOutcomeCard && (
-              <OutcomeCard
-                room={room}
-                user={user}
-                isHost={isHost}
-                onAdjustScore={handleAdjustScore}
-              />
-            )}
-          </>
-        )}
+      <main className="show-layout" style={{ flex: 1, minHeight: 0 }}>
+        <div className="main-stage">
+          {showBoard && (
+            <BoardView room={room} user={user} onSelectClue={handleSelectClue} />
+          )}
+          {showFinal && (
+            <FinalRound
+              room={room}
+              user={user}
+              onSubmitWager={handleFinalWager}
+              onSubmitAnswers={handleFinalAnswers}
+              onRevealResults={handleRevealResults}
+              onFinish={handleFinish}
+            />
+          )}
+        </div>
 
-        {(phase === 'final-wager' || phase === 'final-answer' || phase === 'final-results') && (
-          <FinalRound
-            room={room}
-            user={user}
-            onSubmitWager={handleFinalWager}
-            onSubmitAnswers={handleFinalAnswers}
-            onRevealResults={handleRevealResults}
-            onFinish={handleFinish}
-          />
-        )}
-      </div>
+        <aside className="info-rail">
+          <Scoreboard room={room} user={user} />
+          <ActivityLog room={room} />
+        </aside>
+      </main>
 
+      {/* Fixed overlays */}
+      {phase === 'clue' && (
+        <ClueView
+          room={room}
+          user={user}
+          onBuzz={handleBuzz}
+          onSubmitAnswer={handleSubmitAnswer}
+          onSubmitChoice={handleSubmitChoice}
+          onHostTimeout={handleHostTimeout}
+        />
+      )}
+      {showOutcomeCard && (
+        <OutcomeCard
+          room={room}
+          user={user}
+          isHost={isHost}
+          onAdjustScore={handleAdjustScore}
+        />
+      )}
       {showEndConfirm && (
         <EndConfirmModal
           onConfirm={handleConfirmReturn}

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { User } from 'firebase/auth'
 import { Room } from '../../types/game'
-import { Button } from '../ui/Button'
 
 interface Props {
   room: Room
@@ -14,50 +13,45 @@ interface Props {
 
 // ── Wager phase ──────────────────────────────────────────────────────────────
 
-function WagerPhase({
-  room,
-  user,
-  onSubmit,
-}: {
-  room: Room
-  user: User
-  onSubmit: (w: number) => void
-}) {
+function WagerPhase({ room, user, onSubmit }: { room: Room; user: User; onSubmit: (w: number) => void }) {
   const myScore = room.players[user.uid]?.score ?? 0
   const maxWager = Math.max(0, myScore)
   const fr = room.finalRound!
   const myEntry = fr.playerEntries[user.uid]
   const hasWagered = myEntry?.wager !== undefined && myEntry.wager > 0
 
-  const [wager, setWager] = useState(Math.min(maxWager, 0))
+  const [wager, setWager] = useState(0)
   const [submitted, setSubmitted] = useState(hasWagered)
 
-  const waitingCount = Object.keys(room.players).filter(
-    (uid) => !fr.playerEntries[uid]?.wager,
-  ).length
+  const waitingCount = Object.keys(room.players).filter((uid) => !fr.playerEntries[uid]?.wager).length
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-md mx-auto">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-white">Final Round</h2>
-        <p className="text-gray-400 mt-1 text-sm">
-          {fr.questions.length} question{fr.questions.length !== 1 ? 's' : ''}. Set your wager — the top scorer doubles it.
+    <div className="stack" style={{ maxWidth: '460px', width: '100%' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div className="eyebrow">Final round</div>
+        <h2 style={{ fontWeight: 900, fontSize: '1.6rem' }}>Place Your Wager</h2>
+        <p className="muted" style={{ marginTop: '0.35rem', fontSize: '0.88rem' }}>
+          {fr.questions.length} question{fr.questions.length !== 1 ? 's' : ''} — top scorer doubles their wager
         </p>
       </div>
 
-      <div className="bg-blue-950/60 border border-blue-900/60 rounded-xl p-5 flex flex-col gap-4">
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-400">Your score</span>
-          <span className="font-mono font-semibold text-yellow-400">${myScore.toLocaleString()}</span>
+      <div className="panel elevated-panel stack compact-stack">
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+          <span className="muted">Your score</span>
+          <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--gold)' }}>
+            ${myScore.toLocaleString()}
+          </span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-400">Max wager</span>
-          <span className="font-mono font-semibold text-yellow-300">${maxWager.toLocaleString()}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+          <span className="muted">Max wager</span>
+          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--gold)' }}>
+            ${maxWager.toLocaleString()}
+          </span>
         </div>
 
         {submitted ? (
-          <p className="text-center text-sm text-gray-500 py-2">
-            Wager submitted: <span className="text-white font-medium">${myEntry.wager.toLocaleString()}</span>
+          <p className="muted" style={{ textAlign: 'center', fontSize: '0.9rem', padding: '0.5rem 0' }}>
+            Wager locked: <strong style={{ color: 'var(--text)' }}>${myEntry.wager.toLocaleString()}</strong>
           </p>
         ) : (
           <>
@@ -68,33 +62,30 @@ function WagerPhase({
               step={100}
               value={wager}
               onChange={(e) => setWager(parseInt(e.target.value))}
-              className="w-full accent-yellow-500"
             />
-            <div className="flex items-center gap-3">
+            <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
               <input
                 type="number"
                 min={0}
                 max={maxWager}
                 step={100}
                 value={wager}
-                onChange={(e) =>
-                  setWager(Math.min(maxWager, Math.max(0, parseInt(e.target.value) || 0)))
-                }
-                className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white font-mono text-center focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                onChange={(e) => setWager(Math.min(maxWager, Math.max(0, parseInt(e.target.value) || 0)))}
+                style={{ flex: 1, textAlign: 'center', fontFamily: 'monospace', fontWeight: 800 }}
               />
-              <Button
+              <button
                 onClick={() => { setSubmitted(true); onSubmit(wager) }}
-                className="shrink-0"
+                style={{ flex: '0 0 auto' }}
               >
                 Lock In
-              </Button>
+              </button>
             </div>
           </>
         )}
       </div>
 
       {waitingCount > 0 && (
-        <p className="text-center text-xs text-gray-600">
+        <p className="muted" style={{ textAlign: 'center', fontSize: '0.82rem' }}>
           Waiting for {waitingCount} player{waitingCount !== 1 ? 's' : ''} to wager…
         </p>
       )}
@@ -104,15 +95,7 @@ function WagerPhase({
 
 // ── Answer phase ─────────────────────────────────────────────────────────────
 
-function AnswerPhase({
-  room,
-  user,
-  onSubmit,
-}: {
-  room: Room
-  user: User
-  onSubmit: (answers: Record<string, string>) => void
-}) {
+function AnswerPhase({ room, user, onSubmit }: { room: Room; user: User; onSubmit: (a: Record<string, string>) => void }) {
   const fr = room.finalRound!
   const [answers, setAnswers] = useState<Record<string, string>>(() =>
     Object.fromEntries(fr.questions.map((q) => [q.id, ''])),
@@ -120,73 +103,64 @@ function AnswerPhase({
   const [submitted, setSubmitted] = useState(
     Object.keys(fr.playerEntries[user.uid]?.answers ?? {}).length > 0,
   )
-
   const myEntry = fr.playerEntries[user.uid]
   const allFilled = fr.questions.every((q) => answers[q.id]?.trim())
-
   const waitingCount = Object.keys(room.players).filter(
     (uid) => Object.keys(fr.playerEntries[uid]?.answers ?? {}).length === 0,
   ).length
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-lg mx-auto">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-white">Answer the Clues</h2>
-        <p className="text-gray-400 mt-1 text-sm">
-          Wager: <span className="text-yellow-300 font-semibold">${myEntry?.wager.toLocaleString()}</span>
+    <div className="stack" style={{ maxWidth: '560px', width: '100%' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div className="eyebrow">Final round</div>
+        <h2 style={{ fontWeight: 900, fontSize: '1.6rem' }}>Answer the Clues</h2>
+        <p className="muted" style={{ marginTop: '0.35rem', fontSize: '0.88rem' }}>
+          Wager: <strong style={{ color: 'var(--gold)' }}>${myEntry?.wager.toLocaleString()}</strong>
         </p>
       </div>
 
       {submitted ? (
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-5 flex flex-col gap-3">
-          <p className="text-gray-400 text-sm text-center">Answers submitted. Waiting for others…</p>
+        <div className="panel elevated-panel stack compact-stack">
+          <p className="muted" style={{ textAlign: 'center', fontSize: '0.9rem' }}>Answers submitted. Waiting for others…</p>
           {fr.questions.map((q) => (
-            <div key={q.id} className="flex flex-col gap-0.5">
-              <p className="text-xs text-gray-500">{q.category}</p>
-              <p className="text-sm text-gray-300">{q.clue}</p>
-              <p className="text-sm text-yellow-400 font-medium">
+            <div key={q.id} className="final-question stack compact-stack">
+              <span className="eyebrow" style={{ marginBottom: 0 }}>{q.category}</span>
+              <p style={{ fontSize: '0.92rem' }}>{q.clue}</p>
+              <p style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '0.9rem' }}>
                 Your answer: {myEntry?.answers[q.id] ?? '—'}
               </p>
             </div>
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="stack">
           {fr.questions.map((q, i) => (
-            <div
-              key={q.id}
-              className="bg-blue-950/60 border border-blue-900/60 rounded-xl p-4 flex flex-col gap-3"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-widest text-blue-400">
-                  {q.category}
-                </span>
-                <span className="text-xs text-gray-600">Q{i + 1}</span>
+            <div key={q.id} className="final-question stack compact-stack">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="eyebrow" style={{ marginBottom: 0 }}>{q.category}</span>
+                <span className="muted" style={{ fontSize: '0.78rem' }}>Q{i + 1}</span>
               </div>
-              <p className="text-base text-white leading-snug">{q.clue}</p>
+              <p>{q.clue}</p>
               <input
                 value={answers[q.id] ?? ''}
-                onChange={(e) =>
-                  setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
-                }
+                onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
                 placeholder="Your answer…"
-                className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
               />
             </div>
           ))}
-          <Button
+          <button
+            className="btn-lg"
+            style={{ width: '100%' }}
             onClick={() => { setSubmitted(true); onSubmit(answers) }}
             disabled={!allFilled}
-            className="w-full"
-            size="lg"
           >
             Submit Answers
-          </Button>
+          </button>
         </div>
       )}
 
       {waitingCount > 0 && (
-        <p className="text-center text-xs text-gray-600">
+        <p className="muted" style={{ textAlign: 'center', fontSize: '0.82rem' }}>
           Waiting for {waitingCount} more player{waitingCount !== 1 ? 's' : ''}…
         </p>
       )}
@@ -213,55 +187,71 @@ function ResultsPhase({
   const sorted = Object.values(room.players).sort((a, b) => b.score - a.score)
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-lg mx-auto">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-white">Final Results</h2>
+    <div className="stack" style={{ maxWidth: '600px', width: '100%' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div className="eyebrow">Final round</div>
+        <h2 style={{ fontWeight: 900, fontSize: '1.6rem' }}>Results</h2>
       </div>
 
-      {/* Questions + answers */}
-      {fr.questions.map((q, i) => (
-        <div key={q.id} className="bg-blue-950/60 border border-blue-900/60 rounded-xl p-4 flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-blue-400">{q.category}</span>
-            <span className="text-xs text-gray-600">Q{i + 1}</span>
+      {/* Questions + submitted answers */}
+      <div className="final-grid">
+        {fr.questions.map((q, i) => (
+          <div key={q.id} className="final-question stack compact-stack">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span className="eyebrow" style={{ marginBottom: 0 }}>{q.category}</span>
+              <span className="muted" style={{ fontSize: '0.78rem' }}>Q{i + 1}</span>
+            </div>
+            <p style={{ fontSize: '0.88rem' }}>{q.clue}</p>
+            <p style={{ color: 'var(--success)', fontSize: '0.82rem', fontWeight: 700 }}>
+              {q.acceptedAnswers[0]}
+            </p>
+            <div className="stack compact-stack" style={{ borderTop: '1px solid var(--line)', paddingTop: '0.5rem' }}>
+              {Object.entries(fr.playerEntries).map(([uid, entry]) => {
+                const player = room.players[uid]
+                return (
+                  <div
+                    key={uid}
+                    style={{
+                      display: 'flex',
+                      gap: '0.5rem',
+                      fontSize: '0.82rem',
+                      color: uid === user.uid ? 'var(--gold)' : 'var(--muted)',
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, minWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {player?.name ?? uid}
+                    </span>
+                    <span>{entry.answers[q.id] ?? '—'}</span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-          <p className="text-sm text-white">{q.clue}</p>
-          <p className="text-xs text-green-400">
-            Answer: <span className="font-semibold">{q.acceptedAnswers[0]}</span>
-          </p>
-          <div className="flex flex-col gap-1">
-            {Object.entries(fr.playerEntries).map(([uid, entry]) => {
-              const player = room.players[uid]
-              const ans = entry.answers[q.id] ?? '—'
-              return (
-                <div key={uid} className={`flex items-center gap-2 text-xs ${uid === user.uid ? 'text-yellow-400' : 'text-gray-400'}`}>
-                  <span className="w-24 truncate font-medium">{player?.name ?? uid}</span>
-                  <span className="flex-1">{ans}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {/* Final scores */}
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col gap-2">
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Final Scores</p>
+      <div className="panel elevated-panel stack compact-stack">
+        <div className="eyebrow" style={{ marginBottom: '0.4rem' }}>Final Scores</div>
         {sorted.map((p, i) => {
           const entry = fr.playerEntries[p.uid]
           return (
             <div
               key={p.uid}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg ${
-                p.uid === user.uid ? 'bg-blue-900/30 border border-blue-800/40' : 'bg-gray-800'
-              }`}
+              className={`player-row scoreboard-row${p.uid === user.uid ? ' me' : ''}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}
             >
-              <span className="w-6 text-sm text-gray-500">{i + 1}</span>
-              <span className="flex-1 font-medium truncate">{p.name}</span>
+              <span className="rank-pill" style={{ minWidth: '1.8rem', textAlign: 'center' }}>{i + 1}</span>
+              <span style={{ flex: 1, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {p.name}
+              </span>
               {entry?.doubled && (
-                <span className="text-xs text-yellow-400 font-bold">DOUBLED</span>
+                <span className="tag chooser-tag" style={{ fontSize: '0.72rem' }}>DOUBLED</span>
               )}
-              <span className={`font-mono font-bold tabular-nums ${p.score < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
+              <span
+                className="score-value"
+                style={p.score < 0 ? { color: 'var(--danger)' } : undefined}
+              >
                 ${p.score.toLocaleString()}
               </span>
             </div>
@@ -270,16 +260,18 @@ function ResultsPhase({
       </div>
 
       {isHost ? (
-        <div className="flex gap-3">
-          <Button onClick={onReveal} variant="secondary" className="flex-1">
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="secondary btn-lg" style={{ flex: 1 }} onClick={onReveal}>
             Reveal Answers
-          </Button>
-          <Button onClick={onFinish} className="flex-1" size="lg">
+          </button>
+          <button className="btn-lg" style={{ flex: 1 }} onClick={onFinish}>
             Finish Game
-          </Button>
+          </button>
         </div>
       ) : (
-        <p className="text-center text-sm text-gray-500">Waiting for host to finish…</p>
+        <p className="muted" style={{ textAlign: 'center', fontSize: '0.88rem' }}>
+          Waiting for host to finish…
+        </p>
       )}
     </div>
   )
@@ -290,28 +282,22 @@ function ResultsPhase({
 export function FinalRound({ room, user, onSubmitWager, onSubmitAnswers, onRevealResults, onFinish }: Props) {
   const isHost = user.uid === room.hostId
   const fr = room.finalRound
-
   if (!fr) return null
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-lg">
-        {fr.status === 'wager' && (
-          <WagerPhase room={room} user={user} onSubmit={onSubmitWager} />
-        )}
-        {fr.status === 'answer' && (
-          <AnswerPhase room={room} user={user} onSubmit={onSubmitAnswers} />
-        )}
-        {fr.status === 'results' && (
-          <ResultsPhase
-            room={room}
-            user={user}
-            isHost={isHost}
-            onReveal={onRevealResults}
-            onFinish={onFinish}
-          />
-        )}
-      </div>
+    <div
+      className="panel elevated-panel final-stage-card stack"
+      style={{ alignItems: 'center', padding: '2rem 1.5rem', overflowY: 'auto' }}
+    >
+      {fr.status === 'wager' && (
+        <WagerPhase room={room} user={user} onSubmit={onSubmitWager} />
+      )}
+      {fr.status === 'answer' && (
+        <AnswerPhase room={room} user={user} onSubmit={onSubmitAnswers} />
+      )}
+      {fr.status === 'results' && (
+        <ResultsPhase room={room} user={user} isHost={isHost} onReveal={onRevealResults} onFinish={onFinish} />
+      )}
     </div>
   )
 }

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, KeyboardEvent } from 'react'
 import { User } from 'firebase/auth'
 import { Room, ClueState, GameMode } from '../../types/game'
-import { Button } from '../ui/Button'
 
 interface Props {
   room: Room
@@ -49,26 +48,16 @@ function TimerBar({
   percent: number
   variant: 'answer' | 'buzz'
 }) {
-  const urgent = variant === 'answer' && secsLeft <= 3
   return (
-    <div className="flex flex-col gap-0.5 min-w-[80px]">
-      <div className="flex justify-between items-center gap-2">
-        <span className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">{label}</span>
-        <span className={`text-xs font-mono font-bold tabular-nums ${urgent ? 'text-red-400' : 'text-white'}`}>
+    <div className={`timer-shell ${variant}`} style={{ minWidth: '120px' }}>
+      <div className="timer-meta">
+        <span className="eyebrow" style={{ marginBottom: 0 }}>{label}</span>
+        <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '0.9rem' }}>
           {secsLeft.toFixed(1)}s
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-none ${
-            variant === 'buzz'
-              ? 'bg-blue-500'
-              : urgent
-                ? 'bg-red-500'
-                : 'bg-yellow-400'
-          }`}
-          style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
-        />
+      <div className="timer-track">
+        <div className="timer-fill" style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
       </div>
     </div>
   )
@@ -100,7 +89,6 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
   const isActiveAnswerer = cs.activeAnswerPlayerId === user.uid
   const myAnswer = cs.submittedAnswers[user.uid]
 
-  // Host drives deadline transitions
   const onHostTimeoutRef = useRef(onHostTimeout)
   useEffect(() => { onHostTimeoutRef.current = onHostTimeout })
 
@@ -117,7 +105,6 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
     return () => clearInterval(id)
   }, [isHost, cs.status, cs.buzzDeadline, cs.answerDeadline])
 
-  // Classic/speed: transition revealing → answering once fully revealed (host)
   const hostTransitionedRef = useRef(false)
   useEffect(() => {
     if (!isHost || isJeopardy || hostTransitionedRef.current) return
@@ -128,7 +115,6 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
   }, [isFullyRevealed, cs.status, isHost, isJeopardy])
   useEffect(() => { hostTransitionedRef.current = false }, [cs.questionId])
 
-  // Focus input when it's our turn
   useEffect(() => {
     if ((isActiveAnswerer || (cs.status === 'answering' && !myAnswer)) && inputRef.current) {
       inputRef.current.focus()
@@ -150,168 +136,124 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
   const totalBuzzMs = cs.fullText.length * cs.revealSpeedMs + room.settings.postRevealBuzzSeconds * 1000
   const buzzPercent = cs.buzzDeadline ? (buzzMsLeft / totalBuzzMs) * 100 : 0
   const answerPercent = cs.answerDeadline ? (answerMsLeft / (room.settings.answerTimeSeconds * 1000)) * 100 : 0
-  const buzzSecsLeft = buzzMsLeft / 1000
-  const answerSecsLeft = answerMsLeft / 1000
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      {/* Clue header strip */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-blue-950/60 border-b border-blue-900/40">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-black uppercase tracking-widest text-blue-300">
-            {cs.category}
-          </span>
-          <span className="text-yellow-400 font-black text-lg">${cs.value}</span>
-        </div>
+    <div className="clue-overlay">
+      <div className="clue-popup panel elevated-panel stack">
 
-        {/* Timer bars */}
-        <div className="flex items-center gap-4">
-          {cs.status === 'revealing' && isJeopardy && cs.buzzDeadline && buzzMsLeft > 0 && (
-            <TimerBar label="Buzz window" secsLeft={buzzSecsLeft} percent={buzzPercent} variant="buzz" />
-          )}
-          {(cs.status === 'buzzed' || cs.status === 'answering') && cs.answerDeadline && answerMsLeft > 0 && (
-            <TimerBar label="Answer" secsLeft={answerSecsLeft} percent={answerPercent} variant="answer" />
-          )}
-        </div>
-      </div>
-
-      {/* Main clue area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 gap-8">
-        {/* Reveal progress */}
-        {!isFullyRevealed && (
-          <div className="w-full max-w-2xl h-0.5 bg-gray-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-600 rounded-full transition-none"
-              style={{ width: `${cs.fullText.length ? (revealedText.length / cs.fullText.length) * 100 : 0}%` }}
-            />
+        {/* Header: category + value + timers */}
+        <div className="clue-header">
+          <div className="row gap">
+            <span className="eyebrow" style={{ marginBottom: 0 }}>{cs.category}</span>
+            <span style={{ color: 'var(--gold)', fontWeight: 900, fontSize: '1.2rem' }}>${cs.value}</span>
           </div>
-        )}
+          <div className="row gap">
+            {cs.status === 'revealing' && isJeopardy && cs.buzzDeadline && buzzMsLeft > 0 && (
+              <TimerBar label="Buzz" secsLeft={buzzMsLeft / 1000} percent={buzzPercent} variant="buzz" />
+            )}
+            {(cs.status === 'buzzed' || cs.status === 'answering') && cs.answerDeadline && answerMsLeft > 0 && (
+              <TimerBar label="Answer" secsLeft={answerMsLeft / 1000} percent={answerPercent} variant="answer" />
+            )}
+          </div>
+        </div>
 
         {/* Clue text */}
-        <div className="w-full max-w-2xl text-center px-4">
-          <p className="text-2xl md:text-3xl font-medium leading-relaxed text-white min-h-[4rem]">
-            {revealedText}
-            {!isFullyRevealed && (
-              <span className="animate-pulse text-blue-400">▌</span>
-            )}
-          </p>
+        <div className="clue-box clue-popup-box">
+          {revealedText}
+          {!isFullyRevealed && <span style={{ opacity: 0.55 }}>▌</span>}
         </div>
 
-        {/* Status messages */}
-        {cs.status === 'buzzed' && cs.activeAnswerPlayerId && (
-          <div className={`px-4 py-2 rounded-lg border font-bold text-sm ${
-            isActiveAnswerer
-              ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-300'
-              : 'bg-gray-800 border-gray-700 text-gray-400'
-          }`}>
-            {isActiveAnswerer
-              ? '🔔 You buzzed in! Type your answer.'
-              : `${room.players[cs.activeAnswerPlayerId]?.name ?? 'Someone'} buzzed in!`}
-          </div>
-        )}
+        {/* Action / status band */}
+        <div className="show-status-band">
 
-        {cs.status === 'answering' && !isJeopardy && !myAnswer && (
-          <p className="text-sm text-blue-300 font-medium">Everyone answer now!</p>
-        )}
+          {/* Buzz button */}
+          {isEligibleToBuzz && isFullyRevealed && (
+            <button className="btn-lg" onClick={onBuzz} style={{ fontSize: '1.1rem', letterSpacing: '0.06em' }}>
+              BUZZ IN
+            </button>
+          )}
 
-        {/* Multiple choice */}
-        {mode === 'multiple-choice' && cs.status === 'answering' && cs.options && (
-          <div className="grid grid-cols-2 gap-3 w-full max-w-lg">
-            {cs.options.map((opt, idx) => (
+          {/* Buzzed-in indicator */}
+          {cs.status === 'buzzed' && cs.activeAnswerPlayerId && (
+            <span className={`tag${isActiveAnswerer ? ' answer-tag' : ''}`} style={{ fontWeight: 700 }}>
+              {isActiveAnswerer
+                ? 'You buzzed in!'
+                : `${room.players[cs.activeAnswerPlayerId]?.name ?? 'Someone'} buzzed in`}
+            </span>
+          )}
+
+          {/* Classic / speed — everyone answers */}
+          {cs.status === 'answering' && !isJeopardy && !myAnswer && (
+            <span className="muted" style={{ fontSize: '0.88rem' }}>Everyone answer now!</span>
+          )}
+
+          {/* Text answer input */}
+          {(cs.status === 'answering' || (cs.status === 'buzzed' && isActiveAnswerer)) &&
+            mode !== 'multiple-choice' && (
+            <div className="row gap clue-answer-row" style={{ flex: 1, flexWrap: 'wrap' }}>
+              <input
+                ref={inputRef}
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={myAnswer ? `Submitted: ${myAnswer}` : 'Type your answer…'}
+                disabled={!!myAnswer || submitting}
+                style={{ flex: '1 1 200px' }}
+              />
               <button
-                key={idx}
-                onClick={() => !myAnswer && onSubmitChoice(idx)}
-                disabled={!!myAnswer}
-                className={`px-4 py-3 rounded-xl border-2 text-left text-sm font-medium transition-all ${
-                  myAnswer === opt
-                    ? 'bg-blue-700 border-blue-500 text-white'
-                    : myAnswer
-                      ? 'bg-gray-900 border-gray-800 text-gray-600 cursor-default'
-                      : 'bg-blue-900/40 border-blue-800 text-gray-200 hover:border-blue-600 hover:bg-blue-900/70 cursor-pointer active:scale-95'
-                }`}
+                onClick={handleSubmit}
+                disabled={!!myAnswer || !answer.trim() || submitting}
+                style={{ flex: '0 0 auto' }}
               >
-                <span className="text-blue-500 mr-2 font-bold">{String.fromCharCode(65 + idx)}.</span>
-                {opt}
+                {submitting ? '…' : 'Submit'}
               </button>
-            ))}
-          </div>
-        )}
-
-        {/* Text answer input */}
-        {(cs.status === 'answering' || (cs.status === 'buzzed' && isActiveAnswerer)) &&
-          mode !== 'multiple-choice' && (
-          <div className="flex gap-2 w-full max-w-md">
-            <input
-              ref={inputRef}
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={myAnswer ? `Submitted: ${myAnswer}` : 'Type your answer…'}
-              disabled={!!myAnswer || submitting}
-              className="flex-1 bg-gray-800 border-2 border-gray-700 focus:border-yellow-500 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none disabled:opacity-50 transition-colors"
-            />
-            <Button
-              onClick={handleSubmit}
-              disabled={!!myAnswer || !answer.trim() || submitting}
-              loading={submitting}
-              className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold border-0"
-            >
-              Submit
-            </Button>
-          </div>
-        )}
-
-        {/* Buzz button */}
-        {isEligibleToBuzz && isFullyRevealed && (
-          <button
-            onClick={onBuzz}
-            className="px-12 py-5 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-black text-2xl rounded-2xl shadow-xl shadow-yellow-900/30 transition-all border-4 border-yellow-500"
-          >
-            BUZZ IN
-          </button>
-        )}
-
-        {/* Submitted confirmation */}
-        {myAnswer && cs.status !== 'resolved' && (
-          <p className="text-xs text-gray-600 uppercase tracking-widest">
-            Submitted: <span className="text-gray-400 normal-case">{myAnswer}</span>
-          </p>
-        )}
-
-        {/* Not eligible to buzz */}
-        {isJeopardy && cs.status === 'revealing' && !isEligibleToBuzz &&
-          !cs.remainingEligiblePlayers.includes(user.uid) && (
-          <p className="text-xs text-gray-700">You are not eligible to buzz for this clue.</p>
-        )}
-
-        {cs.status === 'buzzed' && !isActiveAnswerer && (
-          <p className="text-sm text-gray-500">
-            Waiting for{' '}
-            <span className="text-white font-medium">
-              {room.players[cs.activeAnswerPlayerId ?? '']?.name ?? 'player'}
-            </span>{' '}
-            to answer…
-          </p>
-        )}
-      </div>
-
-      {/* Bottom score strip */}
-      <div className="flex gap-2 justify-center px-4 py-2.5 bg-gray-900/80 border-t border-gray-800 overflow-x-auto shrink-0">
-        {Object.values(room.players)
-          .sort((a, b) => b.score - a.score)
-          .map((p) => (
-            <div
-              key={p.uid}
-              className={`flex flex-col items-center gap-0 px-3 py-1 rounded-lg shrink-0 ${
-                p.uid === user.uid ? 'bg-blue-900/30 border border-blue-800/40' : ''
-              }`}
-            >
-              <span className="text-[10px] text-gray-500 truncate max-w-[5rem]">{p.name}</span>
-              <span className={`text-sm font-black font-mono tabular-nums ${p.score < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
-                ${p.score.toLocaleString()}
-              </span>
             </div>
-          ))}
+          )}
+
+          {/* Multiple choice */}
+          {mode === 'multiple-choice' && cs.status === 'answering' && cs.options && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.65rem', flex: 1 }}>
+              {cs.options.map((opt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => !myAnswer && onSubmitChoice(idx)}
+                  disabled={!!myAnswer}
+                  className={myAnswer === opt ? '' : 'secondary'}
+                  style={{ textAlign: 'left', fontWeight: myAnswer === opt ? 800 : 600 }}
+                >
+                  <span style={{ color: 'var(--gold)', marginRight: '0.4rem' }}>
+                    {String.fromCharCode(65 + idx)}.
+                  </span>
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Submitted confirmation */}
+          {myAnswer && cs.status !== 'resolved' && (
+            <span className="muted" style={{ fontSize: '0.8rem' }}>
+              Submitted: <strong style={{ color: 'var(--text)' }}>{myAnswer}</strong>
+            </span>
+          )}
+
+          {/* Not eligible to buzz */}
+          {isJeopardy && cs.status === 'revealing' && !isEligibleToBuzz &&
+            !cs.remainingEligiblePlayers.includes(user.uid) && (
+            <span className="muted" style={{ fontSize: '0.8rem' }}>Not eligible to buzz this clue</span>
+          )}
+
+          {/* Waiting for active answerer */}
+          {cs.status === 'buzzed' && !isActiveAnswerer && (
+            <span className="muted" style={{ fontSize: '0.88rem' }}>
+              Waiting for{' '}
+              <strong style={{ color: 'var(--text)' }}>
+                {room.players[cs.activeAnswerPlayerId ?? '']?.name ?? 'player'}
+              </strong>
+              {' '}to answer…
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )

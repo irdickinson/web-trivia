@@ -13,14 +13,11 @@ export function RoomCode({ code }: { code: string }) {
     <button
       onClick={handleCopy}
       title="Click to copy"
-      className="flex items-center gap-3 group"
+      className="secondary"
+      style={{ display: 'inline-flex', gap: '0.75rem', alignItems: 'center', width: 'auto' }}
     >
-      <span className="text-4xl font-bold font-mono tracking-widest text-white">
-        {code}
-      </span>
-      <span className="text-xs text-gray-500 group-hover:text-gray-300 transition-colors">
-        {copied ? '✓ Copied' : 'Copy'}
-      </span>
+      <span className="lobby-code-display" style={{ pointerEvents: 'none' }}>{code}</span>
+      <span className="muted" style={{ fontSize: '0.82rem' }}>{copied ? '✓ Copied' : 'Copy'}</span>
     </button>
   )
 }
