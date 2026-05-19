@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Card } from '../components/ui/Card'
 import { getAuthErrorMessage } from '../utils/authErrors'
+import { PageMeta } from '../components/seo/PageMeta'
 
 export default function SignIn() {
   const { signInWithEmail, signInAsGuest } = useAuth()
@@ -43,6 +44,11 @@ export default function SignIn() {
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+      <PageMeta
+        title="Sign In"
+        description="Sign in to Web Trivia to host or join multiplayer trivia games with friends."
+        path="/sign-in"
+      />
       <div className="w-full max-w-sm flex flex-col gap-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white">Sign In</h1>
