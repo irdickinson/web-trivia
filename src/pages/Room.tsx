@@ -5,9 +5,6 @@ import { leaveRoom } from '../lib/rooms'
 import { startGame } from '../lib/game'
 import { DEFAULT_PACK } from '../data/defaultPack'
 import { LoadingScreen } from '../components/ui/LoadingScreen'
-import { Button } from '../components/ui/Button'
-import { RoomCode } from '../components/room/RoomCode'
-import { PlayerList } from '../components/room/PlayerList'
 import { JeopardyGame } from '../components/game/JeopardyGame'
 import { GameFinished } from '../components/game/GameFinished'
 import { PageMeta } from '../components/seo/PageMeta'
@@ -22,10 +19,12 @@ export default function Room() {
 
   if (notFound) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center gap-4">
-        <p className="text-xl text-gray-300">Room not found.</p>
-        <Button onClick={() => navigate('/lobby')}>Back to Lobby</Button>
-      </div>
+      <main className="page center">
+        <div className="panel elevated-panel stack" style={{ textAlign: 'center', padding: '2rem', width: 'min(360px, 94vw)' }}>
+          <p className="muted">Room not found.</p>
+          <button onClick={() => navigate('/lobby')}>Back to Lobby</button>
+        </div>
+      </main>
     )
   }
 
@@ -33,18 +32,16 @@ export default function Room() {
 
   const isHost = user.uid === room.hostId
   const players = Object.values(room.players)
-
-  // Resolve the question pack (custom packs will slot in here later)
   const pack = DEFAULT_PACK
 
-  // ── Active game ────────────────────────────────────────────────────────────
-  if (room.phase === 'board' || room.phase === 'clue' ||
-      room.phase === 'final-wager' || room.phase === 'final-answer' ||
-      room.phase === 'final-results') {
+  if (
+    room.phase === 'board' || room.phase === 'clue' ||
+    room.phase === 'final-wager' || room.phase === 'final-answer' ||
+    room.phase === 'final-results'
+  ) {
     return <JeopardyGame room={room} user={user} pack={pack} />
   }
 
-  // ── Finished ───────────────────────────────────────────────────────────────
   if (room.phase === 'finished') {
     return (
       <GameFinished
@@ -55,7 +52,6 @@ export default function Room() {
     )
   }
 
-  // ── Lobby ──────────────────────────────────────────────────────────────────
   async function handleStart() {
     if (!isHost || !room) return
     await startGame(room, pack)
@@ -63,11 +59,7 @@ export default function Room() {
 
   async function handleLeave() {
     if (!code) return
-    try {
-      await leaveRoom(code, user!.uid)
-    } finally {
-      navigate('/lobby')
-    }
+    try { await leaveRoom(code, user!.uid) } finally { navigate('/lobby') }
   }
 
   const MODE_LABELS: Record<string, string> = {
@@ -78,47 +70,60 @@ export default function Room() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
+    <main className="page center">
       <PageMeta title="Game Room" description="Waiting for the host to start the game." />
-      <div className="max-w-lg mx-auto flex flex-col gap-6">
+      <div className="panel elevated-panel stack" style={{ width: 'min(560px, 94vw)', padding: '1.5rem' }}>
 
-        <div className="flex items-start justify-between">
+        <div className="topbar">
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Room code</p>
-            <RoomCode code={room.code} />
+            <div className="eyebrow">Room code</div>
+            <div className="lobby-code-display">{room.code}</div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLeave}>
-            Leave
-          </Button>
+          <button className="secondary mini-btn" onClick={handleLeave}>Leave</button>
         </div>
 
-        <PlayerList players={players} hostId={room.hostId} />
+        <div className="divider" />
 
-        <div className="flex gap-3 text-sm text-gray-500 flex-wrap">
-          <span>{MODE_LABELS[room.settings.mode] ?? room.settings.mode}</span>
-          <span>·</span>
-          <span>{room.settings.categoryCount} categories</span>
-          <span>·</span>
-          <span>{room.settings.questionCountPerCategory} questions each</span>
-          <span>·</span>
-          <span>up to ${(room.settings.pointValues[room.settings.pointValues.length - 1] ?? 0).toLocaleString()}</span>
+        <div className="stack compact-stack">
+          <div className="eyebrow">Players — {players.length}</div>
+          {players.map((player) => (
+            <div
+              key={player.uid}
+              className="player-row"
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            >
+              <span style={{ fontWeight: 600 }}>{player.name}</span>
+              {player.uid === room.hostId && <span className="tag chooser-tag">Host</span>}
+            </div>
+          ))}
+          {players.length === 0 && (
+            <p className="muted" style={{ fontSize: '0.88rem' }}>No players yet…</p>
+          )}
         </div>
+
+        <div className="divider" />
+
+        <p className="muted" style={{ fontSize: '0.85rem' }}>
+          {MODE_LABELS[room.settings.mode] ?? room.settings.mode}
+          {' · '}{room.settings.categoryCount} categories
+          {' · '}{room.settings.questionCountPerCategory} questions each
+          {' · '}up to ${(room.settings.pointValues[room.settings.pointValues.length - 1] ?? 0).toLocaleString()}
+        </p>
 
         {isHost ? (
-          <Button
-            size="lg"
+          <button
+            className="btn-lg"
+            style={{ width: '100%' }}
             onClick={handleStart}
             disabled={players.length < 1}
-            className="w-full"
           >
             Start Game
-          </Button>
+          </button>
         ) : (
-          <p className="text-center text-sm text-gray-500">
+          <p className="muted" style={{ textAlign: 'center', fontSize: '0.88rem' }}>
             Waiting for the host to start…
           </p>
         )}
-
       </div>
     </main>
   )
