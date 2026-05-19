@@ -6,6 +6,7 @@ import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import UpgradeAccount from './pages/UpgradeAccount'
 import Lobby from './pages/Lobby'
+import Room from './pages/Room'
 
 export default function App() {
   return (
@@ -28,6 +29,10 @@ export default function App() {
           <Route
             path="/lobby"
             element={<RequireAuth><Lobby /></RequireAuth>}
+          />
+          <Route
+            path="/room/:code"
+            element={<RequireAuth><Room /></RequireAuth>}
           />
         </Routes>
       </AuthProvider>
