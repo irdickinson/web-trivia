@@ -1,7 +1,10 @@
 export function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    <div className="page center">
+      <div
+        className="w-10 h-10 rounded-full animate-spin"
+        style={{ border: '2px solid var(--gold)', borderTopColor: 'transparent' }}
+      />
     </div>
   )
 }
