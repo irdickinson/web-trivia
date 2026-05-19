@@ -1,48 +1,76 @@
 import { distance } from 'fastest-levenshtein'
 
-function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ')
+export interface MatchOptions {
+  typoTolerance: boolean
+  variantMatching: boolean
+  caseInsensitive: boolean
 }
 
-export function isAnswerCorrect(
-  submitted: string,
-  correct: string,
-  acceptableAnswers: string[] = [],
-): boolean {
-  if (!submitted.trim()) return false
+export interface MatchResult {
+  matched: boolean
+  matchedAgainst?: string
+  normalizedAttempt: string
+}
 
-  const norm = normalize(submitted)
-  const targets = [correct, ...acceptableAnswers].map(normalize).filter(Boolean)
+export function normalizeAnswer(input: string, caseInsensitive = true): string {
+  let v = input.trim()
+  if (caseInsensitive) v = v.toLowerCase()
+  return v
+    .replace(/[.,!?;:'"()\[\]{}]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
-  for (const target of targets) {
-    // Exact normalized match
-    if (norm === target) return true
+// 1 edit allowed for 5–7 chars, 2 for 8+. Short strings require exact match.
+function isLightTypoMatch(attempt: string, accepted: string): boolean {
+  if (attempt.length < 5 || accepted.length < 5) return false
+  const maxAllowed = accepted.length >= 8 ? 2 : 1
+  return distance(attempt, accepted) <= maxAllowed
+}
 
-    // Submitted is a meaningful sub-phrase of the target
-    // ("Napoleon" inside "Napoleon Bonaparte")
-    if (target.includes(norm) && norm.length >= 3) return true
+export function matchAnswer(
+  attempt: string,
+  acceptedAnswers: string[],
+  options: MatchOptions,
+): MatchResult {
+  const normalizedAttempt = normalizeAnswer(attempt, options.caseInsensitive)
+  const normalizedAccepted = acceptedAnswers.map((a) =>
+    normalizeAnswer(a, options.caseInsensitive),
+  )
 
-    // Levenshtein threshold scales with target length to allow proportional typos
-    const threshold = Math.max(1, Math.floor(target.length * 0.2))
-    if (distance(norm, target) <= threshold) return true
+  // 1. Exact match
+  const exactIdx = normalizedAccepted.indexOf(normalizedAttempt)
+  if (exactIdx !== -1) {
+    return { matched: true, matchedAgainst: acceptedAnswers[exactIdx], normalizedAttempt }
   }
 
-  return false
+  // 2. Variant matching — iterate all accepted strings
+  if (options.variantMatching) {
+    for (let i = 0; i < normalizedAccepted.length; i++) {
+      if (normalizedAccepted[i] === normalizedAttempt) {
+        return { matched: true, matchedAgainst: acceptedAnswers[i], normalizedAttempt }
+      }
+    }
+  }
+
+  // 3. Levenshtein typo tolerance
+  if (options.typoTolerance) {
+    for (let i = 0; i < normalizedAccepted.length; i++) {
+      if (isLightTypoMatch(normalizedAttempt, normalizedAccepted[i])) {
+        return { matched: true, matchedAgainst: acceptedAnswers[i], normalizedAttempt }
+      }
+    }
+  }
+
+  return { matched: false, normalizedAttempt }
 }
 
-export function calculatePoints(
-  submittedAt: number,
-  startedAt: number,
-  timeLimitMs: number,
-  speedBonusEnabled: boolean,
-): number {
-  if (!speedBonusEnabled) return 1000
-  const elapsed = Math.max(0, submittedAt - startedAt)
-  const ratio = Math.min(elapsed / timeLimitMs, 1)
-  // 250–1000 range so late-but-correct answers still reward something
-  return Math.round(1000 * (1 - ratio * 0.75))
+// Convenience wrapper — uses settings defaults
+export function isAnswerCorrect(
+  attempt: string,
+  acceptedAnswers: string[],
+  options: MatchOptions,
+): boolean {
+  if (!attempt.trim()) return false
+  return matchAnswer(attempt, acceptedAnswers, options).matched
 }

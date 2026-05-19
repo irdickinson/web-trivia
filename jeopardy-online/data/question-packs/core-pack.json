@@ -1,0 +1,56 @@
+{
+  "id": "core-pack",
+  "name": "Core Pack",
+  "description": "Starter pack with broad trivia.",
+  "categories": [
+    "History",
+    "Science",
+    "Literature",
+    "Geography",
+    "Government",
+    "Pop Culture"
+  ],
+  "questions": [
+    {"id":"hist-100","category":"History","difficulty":1,"value":100,"clue":"He was the first president of the United States.","acceptedAnswers":["george washington","washington"],"isFinalEligible":true},
+    {"id":"hist-200","category":"History","difficulty":2,"value":200,"clue":"This French emperor lost at Waterloo.","acceptedAnswers":["napoleon","napoleon bonaparte","napolon"],"isFinalEligible":true},
+    {"id":"hist-300","category":"History","difficulty":3,"value":300,"clue":"The Roman general who crossed the Rubicon.","acceptedAnswers":["caesar","julius caesar"],"isFinalEligible":true},
+    {"id":"hist-400","category":"History","difficulty":4,"value":400,"clue":"The year the Berlin Wall fell ended with these two digits.","acceptedAnswers":["89","1989"],"isFinalEligible":false},
+    {"id":"hist-500","category":"History","difficulty":5,"value":500,"clue":"The war between Athens and Sparta is named for this peninsula.","acceptedAnswers":["peloponnese","peloponnesus"],"isFinalEligible":true},
+    {"id":"hist-600","category":"History","difficulty":6,"value":600,"clue":"This Mesopotamian king is tied to a famous law code.","acceptedAnswers":["hammurabi"],"isFinalEligible":true},
+
+    {"id":"sci-100","category":"Science","difficulty":1,"value":100,"clue":"This planet is known as the Red Planet.","acceptedAnswers":["mars"],"isFinalEligible":true},
+    {"id":"sci-200","category":"Science","difficulty":2,"value":200,"clue":"The chemical symbol for gold.","acceptedAnswers":["au"],"isFinalEligible":true},
+    {"id":"sci-300","category":"Science","difficulty":3,"value":300,"clue":"The powerhouse of the cell.","acceptedAnswers":["mitochondria","mitochondrion"],"isFinalEligible":true},
+    {"id":"sci-400","category":"Science","difficulty":4,"value":400,"clue":"This physicist proposed general relativity.","acceptedAnswers":["einstein","albert einstein"],"isFinalEligible":true},
+    {"id":"sci-500","category":"Science","difficulty":5,"value":500,"clue":"The hardest natural substance on Earth.","acceptedAnswers":["diamond"],"isFinalEligible":false},
+    {"id":"sci-600","category":"Science","difficulty":6,"value":600,"clue":"This gas makes up most of Earth's atmosphere.","acceptedAnswers":["nitrogen"],"isFinalEligible":true},
+
+    {"id":"lit-100","category":"Literature","difficulty":1,"value":100,"clue":"The author of Hamlet.","acceptedAnswers":["shakespeare","william shakespeare"],"isFinalEligible":true},
+    {"id":"lit-200","category":"Literature","difficulty":2,"value":200,"clue":"The hobbit who carries the One Ring to Mordor.","acceptedAnswers":["frodo","frodo baggins"],"isFinalEligible":true},
+    {"id":"lit-300","category":"Literature","difficulty":3,"value":300,"clue":"The ancient Mesopotamian epic hero often called a king of Uruk.","acceptedAnswers":["gilgamesh"],"isFinalEligible":true},
+    {"id":"lit-400","category":"Literature","difficulty":4,"value":400,"clue":"The author of 1984.","acceptedAnswers":["orwell","george orwell"],"isFinalEligible":true},
+    {"id":"lit-500","category":"Literature","difficulty":5,"value":500,"clue":"The sea captain in Moby-Dick.","acceptedAnswers":["ahab","captain ahab"],"isFinalEligible":false},
+    {"id":"lit-600","category":"Literature","difficulty":6,"value":600,"clue":"The poet who wrote the Divine Comedy.","acceptedAnswers":["dante","dante alighieri"],"isFinalEligible":true},
+
+    {"id":"geo-100","category":"Geography","difficulty":1,"value":100,"clue":"The capital of Japan.","acceptedAnswers":["tokyo"],"isFinalEligible":true},
+    {"id":"geo-200","category":"Geography","difficulty":2,"value":200,"clue":"The largest ocean on Earth.","acceptedAnswers":["pacific","pacific ocean"],"isFinalEligible":true},
+    {"id":"geo-300","category":"Geography","difficulty":3,"value":300,"clue":"The river that runs through Egypt and empties into the Mediterranean.","acceptedAnswers":["nile","the nile"],"isFinalEligible":true},
+    {"id":"geo-400","category":"Geography","difficulty":4,"value":400,"clue":"The mountain range that separates much of Europe from Asia in Russia.","acceptedAnswers":["urals","ural mountains"],"isFinalEligible":true},
+    {"id":"geo-500","category":"Geography","difficulty":5,"value":500,"clue":"This desert spans much of northern Africa.","acceptedAnswers":["sahara","sahara desert"],"isFinalEligible":false},
+    {"id":"geo-600","category":"Geography","difficulty":6,"value":600,"clue":"The strait separating Alaska from Russia.","acceptedAnswers":["bering","bering strait"],"isFinalEligible":true},
+
+    {"id":"gov-100","category":"Government","difficulty":1,"value":100,"clue":"This branch of U.S. government interprets the laws.","acceptedAnswers":["judicial"],"isFinalEligible":true},
+    {"id":"gov-200","category":"Government","difficulty":2,"value":200,"clue":"The number of U.S. senators per state.","acceptedAnswers":["2","two"],"isFinalEligible":true},
+    {"id":"gov-300","category":"Government","difficulty":3,"value":300,"clue":"The lower house of the U.S. Congress.","acceptedAnswers":["house","house of representatives"],"isFinalEligible":true},
+    {"id":"gov-400","category":"Government","difficulty":4,"value":400,"clue":"This document begins with the words 'We the People'.","acceptedAnswers":["constitution","us constitution","the constitution"],"isFinalEligible":true},
+    {"id":"gov-500","category":"Government","difficulty":5,"value":500,"clue":"The number of justices on the U.S. Supreme Court.","acceptedAnswers":["9","nine"],"isFinalEligible":false},
+    {"id":"gov-600","category":"Government","difficulty":6,"value":600,"clue":"The first ten amendments are collectively known as this.","acceptedAnswers":["bill of rights","rights"],"isFinalEligible":true},
+
+    {"id":"pop-100","category":"Pop Culture","difficulty":1,"value":100,"clue":"The wizarding boy with a lightning scar.","acceptedAnswers":["harry","harry potter"],"isFinalEligible":true},
+    {"id":"pop-200","category":"Pop Culture","difficulty":2,"value":200,"clue":"The plumber brother usually wearing red in Nintendo games.","acceptedAnswers":["mario"],"isFinalEligible":true},
+    {"id":"pop-300","category":"Pop Culture","difficulty":3,"value":300,"clue":"The metal skeleton villain from the first Terminator film.","acceptedAnswers":["terminator","t-800","t800"],"isFinalEligible":true},
+    {"id":"pop-400","category":"Pop Culture","difficulty":4,"value":400,"clue":"The desert planet central to the story in Dune.","acceptedAnswers":["arrakis"],"isFinalEligible":true},
+    {"id":"pop-500","category":"Pop Culture","difficulty":5,"value":500,"clue":"The fictional city protected by Batman.","acceptedAnswers":["gotham","gotham city"],"isFinalEligible":false},
+    {"id":"pop-600","category":"Pop Culture","difficulty":6,"value":600,"clue":"The starship commanded by Jean-Luc Picard in The Next Generation.","acceptedAnswers":["enterprise","enterprise d","enterprise-d"],"isFinalEligible":true}
+  ]
+}

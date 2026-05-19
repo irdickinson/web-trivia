@@ -1,38 +1,22 @@
-import { useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useRoom } from '../hooks/useRoom'
 import { leaveRoom } from '../lib/rooms'
 import { startGame } from '../lib/game'
-import { DEFAULT_QUESTIONS } from '../data/defaultQuestions'
+import { DEFAULT_PACK } from '../data/defaultPack'
 import { LoadingScreen } from '../components/ui/LoadingScreen'
 import { Button } from '../components/ui/Button'
 import { RoomCode } from '../components/room/RoomCode'
 import { PlayerList } from '../components/room/PlayerList'
-import { ClassicGame } from '../components/game/ClassicGame'
+import { JeopardyGame } from '../components/game/JeopardyGame'
 import { GameFinished } from '../components/game/GameFinished'
-import { Question } from '../types/question'
-
-const MODE_LABELS: Record<string, string> = {
-  classic: 'Classic',
-  speed: 'Speed',
-  'multiple-choice': 'Multiple Choice',
-  'fastest-finger': 'Fastest Finger',
-}
+import { PageMeta } from '../components/seo/PageMeta'
 
 export default function Room() {
   const { code } = useParams<{ code: string }>()
   const { user } = useAuth()
   const navigate = useNavigate()
   const { room, loading, notFound } = useRoom(code)
-
-  const questions = useMemo((): Question[] => {
-    if (!room) return []
-    if (room.settings.questionSetId === 'built-in') {
-      return DEFAULT_QUESTIONS.slice(0, room.settings.totalQuestions)
-    }
-    return []
-  }, [room?.settings.questionSetId, room?.settings.totalQuestions])
 
   if (loading) return <LoadingScreen />
 
@@ -50,23 +34,18 @@ export default function Room() {
   const isHost = user.uid === room.hostId
   const players = Object.values(room.players)
 
-  // — Game in progress —
-  if (room.status === 'playing') {
-    if (room.settings.mode === 'classic' || room.settings.mode === 'speed') {
-      return <ClassicGame room={room} user={user} questions={questions} />
-    }
-    // Other modes arrive in later stages
-    return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <p className="text-gray-400">
-          {MODE_LABELS[room.settings.mode]} mode — coming soon
-        </p>
-      </div>
-    )
+  // Resolve the question pack (custom packs will slot in here later)
+  const pack = DEFAULT_PACK
+
+  // ── Active game ────────────────────────────────────────────────────────────
+  if (room.phase === 'board' || room.phase === 'clue' ||
+      room.phase === 'final-wager' || room.phase === 'final-answer' ||
+      room.phase === 'final-results') {
+    return <JeopardyGame room={room} user={user} pack={pack} />
   }
 
-  // — Finished —
-  if (room.status === 'finished') {
+  // ── Finished ───────────────────────────────────────────────────────────────
+  if (room.phase === 'finished') {
     return (
       <GameFinished
         players={room.players}
@@ -76,10 +55,10 @@ export default function Room() {
     )
   }
 
-  // — Lobby —
+  // ── Lobby ──────────────────────────────────────────────────────────────────
   async function handleStart() {
     if (!isHost || !room) return
-    await startGame(room, questions)
+    await startGame(room, pack)
   }
 
   async function handleLeave() {
@@ -91,8 +70,16 @@ export default function Room() {
     }
   }
 
+  const MODE_LABELS: Record<string, string> = {
+    jeopardy: 'Jeopardy',
+    classic: 'Classic',
+    'multiple-choice': 'Multiple Choice',
+    speed: 'Speed',
+  }
+
   return (
     <main className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
+      <PageMeta title="Game Room" description="Waiting for the host to start the game." />
       <div className="max-w-lg mx-auto flex flex-col gap-6">
 
         <div className="flex items-start justify-between">
@@ -107,12 +94,14 @@ export default function Room() {
 
         <PlayerList players={players} hostId={room.hostId} />
 
-        <div className="flex gap-3 text-sm text-gray-500">
+        <div className="flex gap-3 text-sm text-gray-500 flex-wrap">
           <span>{MODE_LABELS[room.settings.mode] ?? room.settings.mode}</span>
           <span>·</span>
-          <span>{room.settings.totalQuestions} questions</span>
+          <span>{room.settings.categoryCount} categories</span>
           <span>·</span>
-          <span>{room.settings.secondsPerQuestion}s each</span>
+          <span>{room.settings.questionCountPerCategory} questions each</span>
+          <span>·</span>
+          <span>up to ${(room.settings.pointValues[room.settings.pointValues.length - 1] ?? 0).toLocaleString()}</span>
         </div>
 
         {isHost ? (

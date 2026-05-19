@@ -39,8 +39,8 @@ export function GameFinished({ players, currentUid, onPlayAgain }: Props) {
           >
             <span className="w-8 text-center text-xl">{MEDALS[i] ?? i + 1}</span>
             <span className="flex-1 font-medium truncate">{player.name}</span>
-            <span className="font-mono font-bold text-lg text-indigo-400 tabular-nums">
-              {player.score.toLocaleString()}
+            <span className={`font-mono font-bold text-lg tabular-nums ${player.score < 0 ? 'text-red-400' : 'text-indigo-400'}`}>
+              ${player.score.toLocaleString()}
             </span>
           </div>
         ))}
