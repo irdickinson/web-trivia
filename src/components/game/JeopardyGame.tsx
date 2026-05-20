@@ -55,8 +55,12 @@ function GameHeader({ room, user, audio, isHost, onBackToLobby }: HeaderProps) {
         {me && (
           <div className="hero-chip primary-chip">
             <span className="chip-label">You</span>
-            <span style={{ fontWeight: 700 }}>{me.name}</span>
-            <span style={{ fontFamily: 'monospace', fontWeight: 800, color: me.score < 0 ? 'var(--danger)' : 'var(--gold)' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2 }}>{me.name}</span>
+            <span style={{
+              fontFamily: 'monospace', fontWeight: 900, fontSize: '1.05rem', lineHeight: 1,
+              color: me.score < 0 ? 'var(--danger)' : 'var(--gold)',
+              marginTop: '0.1rem',
+            }}>
               ${me.score.toLocaleString()}
             </span>
           </div>
@@ -64,13 +68,13 @@ function GameHeader({ room, user, audio, isHost, onBackToLobby }: HeaderProps) {
         {chooser && chooser.uid !== user.uid && (
           <div className="hero-chip">
             <span className="chip-label">Chooser</span>
-            <span style={{ fontWeight: 600 }}>{chooser.name}</span>
+            <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>{chooser.name}</span>
           </div>
         )}
         {activeAnswerer && (
           <div className="hero-chip answering-chip">
             <span className="chip-label">Answering</span>
-            <span style={{ fontWeight: 600 }}>{activeAnswerer.name}</span>
+            <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>{activeAnswerer.name}</span>
           </div>
         )}
       </div>
