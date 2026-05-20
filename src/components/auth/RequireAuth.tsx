@@ -12,7 +12,7 @@ export function RequireAuth({ children, anonymousOnly = false }: Props) {
   const { user, loading, isAnonymous } = useAuth()
 
   if (loading) return <LoadingScreen />
-  if (!user) return <Navigate to="/sign-in" replace />
+  if (!user) return <Navigate to="/?signin=1" replace />
   if (anonymousOnly && !isAnonymous) return <Navigate to="/" replace />
 
   return <>{children}</>
