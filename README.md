@@ -48,6 +48,17 @@ npm run dev
 
 The app automatically connects to local emulators in development mode. No Firebase project or credentials are needed for local development.
 
+### Dev admin account
+
+A quick-fill button labeled **[DEV] Fill admin credentials** appears on the sign-in modal in development mode. Use it to log in as the admin account without typing:
+
+| Field | Value |
+|---|---|
+| Email | `admin@webtrivia.dev` |
+| Password | `Admin1234!` |
+
+**First-time setup:** create this account once via the "Create Account" flow (or the Firebase Emulator UI at http://localhost:4000/auth), then it can be used for all future dev sessions.
+
 ### Environment variables
 
 Credentials are only needed when deploying to production. Copy the example file and fill in your Firebase project values:

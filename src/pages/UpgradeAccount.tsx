@@ -1,10 +1,8 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Button } from '../components/ui/Button'
-import { Input } from '../components/ui/Input'
-import { Card } from '../components/ui/Card'
 import { getAuthErrorMessage } from '../utils/authErrors'
+import { PageMeta } from '../components/seo/PageMeta'
 
 export default function UpgradeAccount() {
   const { upgradeAccount } = useAuth()
@@ -30,20 +28,23 @@ export default function UpgradeAccount() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm flex flex-col gap-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-white">Save Your Progress</h1>
-          <p className="text-gray-400 mt-1 text-sm">
-            Link an account to keep your question sets and stats. Your current guest
-            session carries over — nothing is lost.
+    <main className="page center" style={{ padding: '2rem' }}>
+      <PageMeta title="Save Your Progress" description="Link an account to your guest session." path="/upgrade" />
+      <div className="panel elevated-panel stack" style={{ width: 'min(480px, 94vw)', padding: '1.75rem' }}>
+        <div>
+          <div className="eyebrow">Guest account</div>
+          <h1 style={{ fontWeight: 900, fontSize: '1.6rem' }}>Save Your Progress</h1>
+          <p className="muted" style={{ marginTop: '0.35rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Link an email account to your guest session — nothing is lost, your UID stays the same.
           </p>
         </div>
 
-        <Card>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <Input
-              label="Display Name"
+        <div className="divider" />
+
+        <form onSubmit={handleSubmit} className="stack compact-stack">
+          <label className="stack" style={{ gap: '0.4rem' }}>
+            <span className="eyebrow" style={{ marginBottom: 0 }}>Display Name</span>
+            <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -53,16 +54,20 @@ export default function UpgradeAccount() {
               autoComplete="nickname"
               required
             />
-            <Input
-              label="Email"
+          </label>
+          <label className="stack" style={{ gap: '0.4rem' }}>
+            <span className="eyebrow" style={{ marginBottom: 0 }}>Email</span>
+            <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
               required
             />
-            <Input
-              label="Password"
+          </label>
+          <label className="stack" style={{ gap: '0.4rem' }}>
+            <span className="eyebrow" style={{ marginBottom: 0 }}>Password</span>
+            <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -71,16 +76,17 @@ export default function UpgradeAccount() {
               autoComplete="new-password"
               required
             />
-            {error && <p role="alert" className="text-red-400 text-sm">{error}</p>}
-            <Button type="submit" loading={loading} size="lg" className="w-full mt-1">
-              Save Account
-            </Button>
-          </form>
-        </Card>
+          </label>
+          {error && <p className="error" style={{ fontSize: '0.88rem' }}>{error}</p>}
+          <button type="submit" className="btn-lg" disabled={loading} style={{ width: '100%' }}>
+            {loading ? 'Saving…' : 'Save Account'}
+          </button>
+        </form>
 
         <button
+          className="secondary"
+          style={{ opacity: 0.6, fontSize: '0.88rem' }}
           onClick={() => navigate(-1)}
-          className="text-sm text-gray-500 hover:text-gray-400 text-center transition-colors"
         >
           ← Go back
         </button>
