@@ -1,4 +1,5 @@
 import { Player } from '../../types/game'
+import { BackdropOrb } from '../ui/BackdropOrb'
 
 interface Props {
   players: Record<string, Player>
@@ -14,6 +15,7 @@ export function GameFinished({ players, currentUid, onPlayAgain }: Props) {
 
   return (
     <main className="page center" style={{ padding: '2rem' }}>
+      <BackdropOrb />
       <div className="panel elevated-panel stack" style={{ width: 'min(540px, 94vw)', padding: '1.75rem' }}>
         <div style={{ textAlign: 'center' }}>
           <div className="eyebrow">Game over</div>
