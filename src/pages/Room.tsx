@@ -7,6 +7,7 @@ import { DEFAULT_PACK } from '../data/defaultPack'
 import { LoadingScreen } from '../components/ui/LoadingScreen'
 import { JeopardyGame } from '../components/game/JeopardyGame'
 import { GameFinished } from '../components/game/GameFinished'
+import { BackdropOrb } from '../components/ui/BackdropOrb'
 import { PageMeta } from '../components/seo/PageMeta'
 
 export default function Room() {
@@ -20,6 +21,7 @@ export default function Room() {
   if (notFound) {
     return (
       <main className="page center">
+        <BackdropOrb />
         <div className="panel elevated-panel stack" style={{ textAlign: 'center', padding: '2rem', width: 'min(360px, 94vw)' }}>
           <p className="muted">Room not found.</p>
           <button onClick={() => navigate('/lobby')}>Back to Lobby</button>
@@ -71,6 +73,7 @@ export default function Room() {
 
   return (
     <main className="page center">
+      <BackdropOrb />
       <PageMeta title="Game Room" description="Waiting for the host to start the game." />
       <div className="panel elevated-panel stack" style={{ width: 'min(560px, 94vw)', padding: '1.5rem' }}>
 
