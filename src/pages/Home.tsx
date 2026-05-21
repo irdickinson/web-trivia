@@ -13,6 +13,14 @@ const FEATURES = [
   { icon: '🏆', title: 'Final Round', desc: 'Wager everything on a high-stakes final question.' },
 ]
 
+const pageMeta = (
+  <PageMeta
+    title="Free Multiplayer Trivia Game"
+    description="Host a trivia room, share the code, and challenge your friends. No download required."
+    path="/"
+  />
+)
+
 export default function Home() {
   const { user, loading, isAnonymous, signInAsGuest } = useAuth()
   const { open } = useAuthModal()
@@ -22,8 +30,7 @@ export default function Home() {
 
   if (loading) return <LoadingScreen />
 
-  async function handlePlay() {
-    if (user) { navigate('/lobby'); return }
+  async function handleGuestPlay() {
     setError('')
     setGuestLoading(true)
     try {
@@ -36,55 +43,100 @@ export default function Home() {
     }
   }
 
+  // Authenticated dashboard
+  if (user && !isAnonymous) {
+    return (
+      <main className="page dashboard-page">
+        {pageMeta}
+        <div className="dashboard-hero">
+          <div className="eyebrow">Welcome back</div>
+          <h1 className="dashboard-username">{user.displayName ?? 'Player'}</h1>
+        </div>
+        <div className="dashboard-cards">
+          <div className="panel elevated-panel dashboard-card">
+            <span className="eyebrow">Ready to play?</span>
+            <h2 className="dashboard-card-title">Jump into a game</h2>
+            <p className="dashboard-card-sub">
+              Create a room and invite friends, or join an existing game with a code.
+            </p>
+            <button className="btn-lg" onClick={() => navigate('/lobby')}>Go to Lobby</button>
+          </div>
+        </div>
+        <div className="features-row">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="feature-card">
+              <span className="feature-icon">{f.icon}</span>
+              <span className="feature-title">{f.title}</span>
+              <span className="feature-desc">{f.desc}</span>
+            </div>
+          ))}
+        </div>
+      </main>
+    )
+  }
+
+  // Landing page for unauthenticated / guest users
   return (
-    <main className="hero-section">
-      <PageMeta
-        title="Free Multiplayer Trivia Game"
-        description="Host a trivia room, share the code, and challenge your friends across History, Science, Geography, Pop Culture, and more. No download required."
-        path="/"
-      />
-
-      <div className="eyebrow" style={{ marginBottom: 0 }}>Multiplayer trivia</div>
-      <h1 className="hero-title">Web Trivia</h1>
-      <p className="hero-sub">
-        Host a game. Share the code. Test your knowledge against friends in real time.
-      </p>
-
-      <div className="hero-cta">
-        <button
-          className="btn-lg"
-          onClick={handlePlay}
-          disabled={guestLoading}
-          style={{ minWidth: '160px', fontSize: '1.05rem' }}
-        >
-          {guestLoading ? 'Joining…' : user ? 'Play Now' : 'Play as Guest'}
-        </button>
-        {!user && (
-          <button
-            className="secondary btn-lg"
-            onClick={() => open('signin')}
-            style={{ minWidth: '130px' }}
-          >
-            Sign In
-          </button>
-        )}
-        {user && isAnonymous && (
-          <button className="secondary btn-lg" onClick={() => open('signup')}>
-            Create Account
-          </button>
-        )}
+    <main className="page landing-page">
+      {pageMeta}
+      <div className="landing-left">
+        <div className="eyebrow">Multiplayer trivia</div>
+        <h1 className="hero-title">Web Trivia</h1>
+        <p className="hero-sub">
+          Host a game. Share the code. Test your knowledge against friends in real time.
+        </p>
+        <div className="features-row">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="feature-card">
+              <span className="feature-icon">{f.icon}</span>
+              <span className="feature-title">{f.title}</span>
+              <span className="feature-desc">{f.desc}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {error && <p className="error" style={{ fontSize: '0.88rem' }}>{error}</p>}
-
-      <div className="features-row">
-        {FEATURES.map((f) => (
-          <div key={f.title} className="feature-card">
-            <span className="feature-icon">{f.icon}</span>
-            <span className="feature-title">{f.title}</span>
-            <span className="feature-desc">{f.desc}</span>
-          </div>
-        ))}
+      <div className="landing-right">
+        <div className="panel elevated-panel landing-auth-card">
+          {isAnonymous ? (
+            <>
+              <div className="eyebrow" style={{ textAlign: 'center' }}>Playing as guest</div>
+              <p style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '0.88rem', marginTop: '-0.25rem' }}>
+                Create a free account to save your scores and stats.
+              </p>
+              <button className="btn-lg" style={{ width: '100%' }} onClick={() => navigate('/lobby')}>
+                Play Now
+              </button>
+              <div className="landing-auth-divider">save your progress</div>
+              <button className="secondary btn-lg" style={{ width: '100%' }} onClick={() => open('signup')}>
+                Create Account
+              </button>
+              <button className="secondary btn-lg" style={{ width: '100%', opacity: 0.7 }} onClick={() => open('signin')}>
+                Sign In
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="eyebrow" style={{ textAlign: 'center' }}>Sign up to play</div>
+              <button
+                className="btn-lg"
+                style={{ width: '100%' }}
+                onClick={handleGuestPlay}
+                disabled={guestLoading}
+              >
+                {guestLoading ? 'Joining…' : 'Play as Guest'}
+              </button>
+              <div className="landing-auth-divider">or</div>
+              <button className="secondary btn-lg" style={{ width: '100%' }} onClick={() => open('signin')}>
+                Sign In
+              </button>
+              <button className="secondary btn-lg" style={{ width: '100%' }} onClick={() => open('signup')}>
+                Create Account
+              </button>
+            </>
+          )}
+          {error && <p className="error" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>{error}</p>}
+        </div>
       </div>
     </main>
   )

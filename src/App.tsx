@@ -6,6 +6,7 @@ import { SiteHeader } from './components/layout/SiteHeader'
 import { AuthModal } from './components/auth/AuthModal'
 import { RequireAuth } from './components/auth/RequireAuth'
 import { LoadingScreen } from './components/ui/LoadingScreen'
+import { BackdropOrb } from './components/ui/BackdropOrb'
 
 const Home = lazy(() => import('./pages/Home'))
 const UpgradeAccount = lazy(() => import('./pages/UpgradeAccount'))
@@ -36,6 +37,7 @@ function AuthParamHandler() {
 function SiteLayout() {
   return (
     <div className="site-shell">
+      <BackdropOrb />
       <SiteHeader />
       <AuthParamHandler />
       <div className="site-content">

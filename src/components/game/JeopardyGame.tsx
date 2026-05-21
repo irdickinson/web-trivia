@@ -7,6 +7,7 @@ import { ClueView } from './ClueView'
 import { OutcomeCard } from './OutcomeCard'
 import { FinalRound } from './FinalRound'
 import { useAudio } from '../../hooks/useAudio'
+import { BackdropOrb } from '../ui/BackdropOrb'
 import {
   selectClue,
   buzz,
@@ -354,6 +355,7 @@ export function JeopardyGame({ room, user, pack }: Props) {
 
   return (
     <div className={`page game-page${resultFlash ? ` flash-${resultFlash}` : ''}`}>
+      <BackdropOrb />
       <GameHeader
         room={room}
         user={user}
