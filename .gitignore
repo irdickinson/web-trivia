@@ -2,6 +2,9 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Claude Code project instructions — local only, never public
+CLAUDE.md
 .env
 .env.local
 .env.development.local
