@@ -25,12 +25,14 @@ export function SiteHeader() {
 
       {/* Nav links */}
       <nav className="nav-links">
-        <NavLink
-          to="/lobby"
-          className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-        >
+        <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+          Home
+        </NavLink>
+        <NavLink to="/lobby" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
           Play
         </NavLink>
+        <span className="nav-link nav-link--disabled" title="Coming soon">Leaderboards</span>
+        <span className="nav-link nav-link--disabled" title="Coming soon">How to Play</span>
       </nav>
 
       {/* Auth area */}
