@@ -12,6 +12,7 @@ import {
   ClueOutcome,
   SystemMessage,
   BoardMap,
+  FinalPlayerEntry,
 } from '../types/game'
 import { QuestionPack, BoardQuestion } from '../types/question'
 import { matchAnswer, normalizeAnswer } from './fuzzy'
@@ -645,7 +646,7 @@ export async function initFinalRound(room: Room, pack: QuestionPack): Promise<vo
   const eligible = pack.questions.filter((q) => q.isFinalEligible)
   const selected = shuffle(eligible).slice(0, count)
 
-  const playerEntries: Record<string, { wager: number | null; answers: Record<string, string>; correctCount: number; doubled: boolean }> = {}
+  const playerEntries: Record<string, FinalPlayerEntry> = {}
   for (const uid of Object.keys(room.players)) {
     playerEntries[uid] = { wager: null, answers: {}, correctCount: 0, earnedWager: false }
   }

@@ -2,10 +2,6 @@ export function BackdropOrb() {
   return (
     <div className="orb-backdrop" aria-hidden="true">
       <div className="orb-ambient" />
-      <div className="orb-core" />
-      <div className="orb-rays" />
-      <div className="orb-ring" />
-      <div className="orb-ring-2" />
       {PARTICLES.map((p, i) => (
         <div
           key={i}

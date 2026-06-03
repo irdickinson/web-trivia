@@ -9,7 +9,7 @@ interface Props {
   onContinue: () => void
 }
 
-export function OutcomeCard({ room, user, isHost, onAdjustScore, onContinue }: Props) {
+export function OutcomeCard({ room, isHost, onAdjustScore, onContinue }: Props) {
   const cs = room.clueState!
   const outcome: ClueOutcome = cs.outcome ?? { wasCorrect: false, pointsDelta: 0, correctAnswer: '' }
   const winner = outcome.winnerId ? room.players[outcome.winnerId] : null
