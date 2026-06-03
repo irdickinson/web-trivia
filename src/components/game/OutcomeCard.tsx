@@ -6,9 +6,10 @@ interface Props {
   user: User
   isHost: boolean
   onAdjustScore: (targetUid: string, delta: number) => void
+  onContinue: () => void
 }
 
-export function OutcomeCard({ room, user, isHost, onAdjustScore }: Props) {
+export function OutcomeCard({ room, user, isHost, onAdjustScore, onContinue }: Props) {
   const cs = room.clueState!
   const outcome: ClueOutcome = cs.outcome ?? { wasCorrect: false, pointsDelta: 0, correctAnswer: '' }
   const winner = outcome.winnerId ? room.players[outcome.winnerId] : null
@@ -129,8 +130,12 @@ export function OutcomeCard({ room, user, isHost, onAdjustScore }: Props) {
           </div>
         )}
 
-        {!isHost && (
-          <p className="muted" style={{ textAlign: 'center', fontSize: '0.8rem' }}>Continuing automatically…</p>
+        {isHost ? (
+          <button className="btn-lg" style={{ width: '100%' }} onClick={onContinue}>
+            Continue →
+          </button>
+        ) : (
+          <p className="muted" style={{ textAlign: 'center', fontSize: '0.8rem' }}>Waiting for host to continue…</p>
         )}
       </div>
     </div>

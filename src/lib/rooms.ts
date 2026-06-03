@@ -6,14 +6,14 @@ import { generateRoomCode } from '../utils/roomCode'
 import { sanitizeDisplayName } from '../utils/sanitize'
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  mode: 'jeopardy',
+  mode: 'classic',
   questionSetId: 'built-in',
   categoryCount: 6,
   questionCountPerCategory: 5,
   pointValues: [100, 200, 300, 400, 500],
   revealSpeedMs: 40,
-  answerTimeSeconds: 15,
-  postRevealBuzzSeconds: 5,
+  answerTimeSeconds: 20,
+  postRevealBuzzSeconds: 8,
   allowNegativeScores: true,
   deductOnWrongAnswer: true,
   typoTolerance: true,

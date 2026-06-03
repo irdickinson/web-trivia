@@ -145,47 +145,46 @@ function EndConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCan
   )
 }
 
-// ── Scoreboard (info rail) ────────────────────────────────────────────────────
+// ── Score chart (info rail) ───────────────────────────────────────────────────
 
-function Scoreboard({ room, user }: { room: Room; user: User }) {
+function ScoreChart({ room, user }: { room: Room; user: User }) {
   const sorted = Object.values(room.players).sort((a, b) => b.score - a.score)
   const answering = room.clueState?.activeAnswerPlayerId
+  const maxScore = Math.max(1, ...sorted.map((p) => p.score).filter((s) => s > 0))
 
   return (
-    <div className="panel elevated-panel stack">
-      <div className="rail-header">
-        <div className="eyebrow" style={{ marginBottom: 0 }}>Scores</div>
-      </div>
-      <div className="scoreboard-list stack compact-stack">
-        {sorted.map((p, i) => {
-          const isMe = p.uid === user.uid
-          const isChooser = p.uid === room.currentChooserId
-          const isAnswering = p.uid === answering
-          return (
-            <div
-              key={p.uid}
-              className={`player-row scoreboard-row${isMe ? ' me' : ''}${isAnswering ? ' active' : ''}`}
-            >
-              <div className="player-name-block">
-                <span className="rank-pill">{i + 1}</span>
-                <div>
-                  <span style={{ fontWeight: 600 }}>{p.name}</span>
-                  <div className="player-meta">
-                    {p.isHost && <span className="tag">Host</span>}
-                    {isChooser && <span className="tag chooser-tag">Chooser</span>}
-                    {isAnswering && <span className="tag answer-tag">Answering</span>}
-                  </div>
-                </div>
-              </div>
-              <div className="score-actions">
-                <span className="score-value" style={p.score < 0 ? { color: 'var(--danger)' } : undefined}>
-                  ${p.score.toLocaleString()}
-                </span>
+    <div className="panel elevated-panel stack score-chart">
+      <div className="eyebrow" style={{ marginBottom: '0.25rem' }}>Scores</div>
+      {sorted.map((p, i) => {
+        const isMe = p.uid === user.uid
+        const isChooser = p.uid === room.currentChooserId
+        const isAnswering = p.uid === answering
+        const pct = p.score > 0 ? Math.max(2, (p.score / maxScore) * 100) : 0
+        return (
+          <div key={p.uid} className={`chart-row${isAnswering ? ' active' : ''}`}>
+            <span className="rank-pill chart-rank">{i + 1}</span>
+            <div className="chart-name-block">
+              <span className={`chart-name${isMe ? ' me' : ''}`}>{p.name}</span>
+              <div className="player-meta" style={{ marginTop: '0.1rem' }}>
+                {p.isHost && <span className="tag" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Host</span>}
+                {isChooser && <span className="tag chooser-tag" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Chooser</span>}
+                {isAnswering && <span className="tag answer-tag" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Answering</span>}
               </div>
             </div>
-          )
-        })}
-      </div>
+            <div className="chart-col">
+              <div className="chart-track">
+                <div
+                  className={`chart-bar${isMe ? ' me' : ''}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className={`chart-value${p.score < 0 ? ' negative' : ''}`}>
+                ${p.score.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -251,7 +250,7 @@ export function JeopardyGame({ room, user, pack }: Props) {
 
     if (isHost) {
       if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current)
-      const delay = kind === 'correct' ? 2200 : 1800
+      const delay = kind === 'correct' ? 5000 : 4000
       transitionTimerRef.current = window.setTimeout(() => { void handleContinue() }, delay)
     }
 
@@ -323,6 +322,12 @@ export function JeopardyGame({ room, user, pack }: Props) {
     }
   }
 
+  function handleContinueManual() {
+    if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current)
+    transitionTimerRef.current = null
+    void handleContinue()
+  }
+
   async function handleAdjustScore(targetUid: string, delta: number) {
     if (!isHost) return
     audio.playSfx('adjust')
@@ -389,7 +394,7 @@ export function JeopardyGame({ room, user, pack }: Props) {
         </div>
 
         <aside className="info-rail">
-          <Scoreboard room={room} user={user} />
+          <ScoreChart room={room} user={user} />
           <ActivityLog room={room} />
         </aside>
       </main>
@@ -411,6 +416,7 @@ export function JeopardyGame({ room, user, pack }: Props) {
           user={user}
           isHost={isHost}
           onAdjustScore={handleAdjustScore}
+          onContinue={handleContinueManual}
         />
       )}
       {showEndConfirm && (
