@@ -8,6 +8,7 @@ export interface AudioControls {
   sfxEnabled: boolean
   sfxVol: number
   trackName: string
+  ducked: boolean
   toggleMusic: () => void
   prevTrack: () => void
   nextTrack: () => void
@@ -15,6 +16,9 @@ export interface AudioControls {
   toggleSfx: () => void
   setSfxVol: (v: number) => void
   playSfx: (name: SfxName) => void
+  // Temporarily silence procedural music without touching the user's paused
+  // preference — used while shared YouTube audio is playing.
+  setDucked: (v: boolean) => void
 }
 
 export function useAudio(): AudioControls {
@@ -28,6 +32,7 @@ export function useAudio(): AudioControls {
   const musicVolRef = useRef(0.5)
   const sfxEnabledRef = useRef(true)
   const sfxVolRef = useRef(0.7)
+  const duckedRef = useRef(false)
 
   // State drives re-renders for UI
   const [musicPaused, setMusicPaused] = useState(false)
@@ -35,11 +40,12 @@ export function useAudio(): AudioControls {
   const [musicVol, setMusicVolState] = useState(0.5)
   const [sfxEnabled, setSfxEnabled] = useState(true)
   const [sfxVol, setSfxVolState] = useState(0.7)
+  const [ducked, setDuckedState] = useState(false)
 
   // scheduleRef always points to the latest version so recursive timer is safe
   const scheduleRef = useRef<() => void>(() => {})
   scheduleRef.current = () => {
-    if (musicPausedRef.current) return
+    if (musicPausedRef.current || duckedRef.current) return
     const ctx = ctxRef.current
     if (!ctx) return
     const track = TRACKS[trackIdxRef.current]
@@ -53,12 +59,11 @@ export function useAudio(): AudioControls {
   useEffect(() => {
     if (timerRef.current) window.clearTimeout(timerRef.current)
     stepRef.current = 0
-    if (!musicPaused) {
+    if (!musicPaused && !ducked) {
       timerRef.current = window.setTimeout(() => scheduleRef.current(), 50)
     }
     return () => { if (timerRef.current) window.clearTimeout(timerRef.current) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [musicPaused, trackIndex])
+  }, [musicPaused, trackIndex, ducked])
 
   function getCtx(): AudioContext | null {
     if (!ctxRef.current) {
@@ -75,6 +80,7 @@ export function useAudio(): AudioControls {
     sfxEnabled,
     sfxVol,
     trackName: TRACKS[trackIndex].name,
+    ducked,
 
     toggleMusic() {
       const next = !musicPausedRef.current
@@ -111,6 +117,10 @@ export function useAudio(): AudioControls {
       const ctx = getCtx()
       if (!ctx) return
       playToneSequence(ctx, SFX_TONES[name], sfxVolRef.current)
+    },
+    setDucked(v: boolean) {
+      duckedRef.current = v
+      setDuckedState(v)
     },
   }
 }

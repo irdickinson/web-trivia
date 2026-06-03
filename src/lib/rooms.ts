@@ -59,6 +59,7 @@ export async function createRoom(
     chooserRotationIndex: 0,
     clueState: null,
     finalRound: null,
+    media: null,
     messages: [],
     createdAt: now,
     expiresAt: now + 2 * 60 * 60 * 1000,
