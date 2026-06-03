@@ -21,6 +21,7 @@ declare global {
     unMute(): void
     setVolume(volume: number): void
     getCurrentTime(): number
+    getDuration(): number
     getPlayerState(): number
     getVideoData(): { video_id: string; title: string }
     destroy(): void

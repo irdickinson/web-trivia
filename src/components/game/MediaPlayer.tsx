@@ -8,6 +8,7 @@ import {
   playMedia,
   pauseMedia,
   stopMedia,
+  seekMedia,
   grantMediaControl,
   setMediaTitle,
 } from '../../lib/media'
@@ -21,23 +22,37 @@ interface Props {
 // How far local playback may drift from the synced anchor before we re-seek.
 const DRIFT_TOLERANCE_SEC = 1.6
 
+function formatTime(sec: number): string {
+  if (!isFinite(sec) || sec < 0) sec = 0
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
 export function MediaPlayer({ room, user, audio }: Props) {
   const isHost = user.uid === room.hostId
   const media = room.media
   const controllerId = media?.controllerId ?? room.hostId
   const canControl = isHost || user.uid === controllerId
   const controllerName = room.players[controllerId]?.name ?? 'Host'
+  const isActive = !!media?.videoId
 
   const hostElRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<YTPlayer | null>(null)
+  // Latest media for the player's onStateChange callback (avoids a stale closure).
+  const mediaRef = useRef(media)
+  mediaRef.current = media
+
   const [ready, setReady] = useState(false)
   const [needsGesture, setNeedsGesture] = useState(false)
   const [localMuted, setLocalMuted] = useState(false)
   const [localVol, setLocalVol] = useState(70)
   const [urlInput, setUrlInput] = useState('')
   const [inputError, setInputError] = useState('')
-
-  const isActive = !!media?.videoId
+  const [pos, setPos] = useState(0)
+  const [dur, setDur] = useState(0)
+  // Non-null while the user is dragging the seek bar (don't fight their drag).
+  const [scrub, setScrub] = useState<number | null>(null)
 
   // ── Duck the procedural music while shared audio is playing ──────────────────
   useEffect(() => {
@@ -50,19 +65,26 @@ export function MediaPlayer({ room, user, audio }: Props) {
     let cancelled = false
     void loadYouTubeApi().then(() => {
       if (cancelled || !hostElRef.current || !window.YT) return
+      // A real (non-zero) size is required — browsers won't play a 0×0 player.
+      // The wrapper keeps it off-screen.
       playerRef.current = new window.YT.Player(hostElRef.current, {
-        height: '0',
-        width: '0',
-        playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0 },
+        height: '180',
+        width: '320',
+        playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0, fs: 0 },
         events: {
           onReady: () => setReady(true),
           onStateChange: (e) => {
-            // If we asked to play but the browser blocked autoplay, the player
-            // won't reach PLAYING — surface a tap-to-enable prompt.
-            if (room.media?.status === 'playing' && e.data === window.YT?.PlayerState.PAUSED) {
+            const m = mediaRef.current
+            if (e.data === window.YT?.PlayerState.PLAYING) {
+              setNeedsGesture(false)
+            } else if (
+              m?.status === 'playing' &&
+              (e.data === window.YT?.PlayerState.PAUSED ||
+                e.data === window.YT?.PlayerState.UNSTARTED)
+            ) {
+              // We're supposed to be playing but the browser blocked autoplay.
               setNeedsGesture(true)
             }
-            if (e.data === window.YT?.PlayerState.PLAYING) setNeedsGesture(false)
           },
         },
       })
@@ -72,7 +94,6 @@ export function MediaPlayer({ room, user, audio }: Props) {
       try { playerRef.current?.destroy() } catch { /* ignore */ }
       playerRef.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Apply local volume / mute ────────────────────────────────────────────────
@@ -124,6 +145,20 @@ export function MediaPlayer({ room, user, audio }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, media?.videoId, media?.status, media?.anchorTime, media?.positionMs])
 
+  // ── Poll local playback position for the progress bar ────────────────────────
+  useEffect(() => {
+    if (!ready || !isActive) return
+    const id = window.setInterval(() => {
+      const p = playerRef.current
+      if (!p) return
+      try {
+        setDur(p.getDuration() || 0)
+        if (scrub === null) setPos(p.getCurrentTime() || 0)
+      } catch { /* ignore */ }
+    }, 500)
+    return () => window.clearInterval(id)
+  }, [ready, isActive, scrub])
+
   // ── Upgrade the placeholder label to the real video title (controller only) ──
   useEffect(() => {
     if (!ready || !canControl || !media?.videoId) return
@@ -150,11 +185,35 @@ export function MediaPlayer({ room, user, audio }: Props) {
       return
     }
     setUrlInput('')
-    // Use the id as a placeholder label; it's upgraded to the real title below.
-    void loadMediaVideo(room, id, id).then(() => {
-      // A controller-initiated play counts as a user gesture, so kick it off.
-      void playMedia(room)
-    })
+    setPos(0)
+    setDur(0)
+    // Cue paused at the start; the controller presses Play to begin (a direct
+    // user gesture is what unblocks audio playback).
+    void loadMediaVideo(room, id, id)
+  }
+
+  function handlePlay() {
+    // Start the local player inside the click handler so it counts as a gesture.
+    const p = playerRef.current
+    try {
+      p?.unMute()
+      setLocalMuted(false)
+      p?.playVideo()
+    } catch { /* ignore */ }
+    setNeedsGesture(false)
+    void playMedia(room)
+  }
+
+  function handlePause() {
+    try { playerRef.current?.pauseVideo() } catch { /* ignore */ }
+    void pauseMedia(room)
+  }
+
+  function commitSeek(sec: number) {
+    try { playerRef.current?.seekTo(sec, true) } catch { /* ignore */ }
+    setPos(sec)
+    setScrub(null)
+    void seekMedia(room, sec * 1000)
   }
 
   function enableLocalAudio() {
@@ -162,9 +221,12 @@ export function MediaPlayer({ room, user, audio }: Props) {
     setNeedsGesture(false)
     try {
       p?.unMute()
+      setLocalMuted(false)
       p?.playVideo()
     } catch { /* ignore */ }
   }
+
+  const barValue = scrub ?? pos
 
   return (
     <div className="panel elevated-panel stack media-player">
@@ -177,8 +239,8 @@ export function MediaPlayer({ room, user, audio }: Props) {
         )}
       </div>
 
-      {/* Hidden audio sink */}
-      <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+      {/* Hidden, off-screen audio sink */}
+      <div className="media-sink" aria-hidden="true">
         <div ref={hostElRef} />
       </div>
 
@@ -192,6 +254,28 @@ export function MediaPlayer({ room, user, audio }: Props) {
             ? 'Paste a YouTube link to play its audio for everyone in the room.'
             : `${controllerName} can start shared audio.`}
         </p>
+      )}
+
+      {/* Progress / seek bar */}
+      {isActive && (
+        <div className="media-progress">
+          <input
+            type="range"
+            min={0}
+            max={Math.max(dur, 1)}
+            step={1}
+            value={Math.min(barValue, Math.max(dur, 1))}
+            disabled={!canControl}
+            onChange={(e) => setScrub(parseFloat(e.target.value))}
+            onMouseUp={(e) => commitSeek(parseFloat((e.target as HTMLInputElement).value))}
+            onTouchEnd={(e) => commitSeek(parseFloat((e.target as HTMLInputElement).value))}
+            title="Seek"
+          />
+          <div className="media-time">
+            <span>{formatTime(barValue)}</span>
+            <span>{formatTime(dur)}</span>
+          </div>
+        </div>
       )}
 
       {needsGesture && isActive && (
@@ -218,9 +302,9 @@ export function MediaPlayer({ room, user, audio }: Props) {
           {isActive && (
             <div className="media-row">
               {media?.status === 'playing' ? (
-                <button className="secondary mini-btn" onClick={() => void pauseMedia(room)}>❚❚ Pause</button>
+                <button className="secondary mini-btn" onClick={handlePause}>❚❚ Pause</button>
               ) : (
-                <button className="secondary mini-btn" onClick={() => void playMedia(room)}>▶ Play</button>
+                <button className="secondary mini-btn" onClick={handlePlay}>▶ Play</button>
               )}
               <button className="secondary mini-btn" onClick={() => void stopMedia(room)}>■ Stop</button>
             </div>

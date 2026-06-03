@@ -728,6 +728,15 @@ h1, h2, h3, p { margin: 0; }
 }
 .media-row { display: flex; gap: 0.4rem; }
 .media-row button { flex: 1; }
+/* Off-screen sink that still has real dimensions so the player will play */
+.media-sink { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; overflow: hidden; pointer-events: none; }
+.media-progress { display: flex; flex-direction: column; gap: 0.2rem; }
+.media-progress input[type="range"] { width: 100%; }
+.media-progress input[type="range"]:disabled { opacity: 0.7; cursor: default; }
+.media-time {
+  display: flex; justify-content: space-between;
+  font-family: monospace; font-size: 0.72rem; color: var(--muted);
+}
 .media-grant {
   display: flex; align-items: center; gap: 0.5rem;
   padding-top: 0.5rem; border-top: 1px solid var(--line);
