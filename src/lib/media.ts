@@ -62,6 +62,18 @@ export async function stopMedia(room: Room): Promise<void> {
   })
 }
 
+// Re-anchors playback to a new position (seek). Keeps the current status, so a
+// seek while playing keeps playing from the new spot for everyone.
+export async function seekMedia(room: Room, positionMs: number): Promise<void> {
+  const m = room.media
+  if (!m) return
+  await writeMedia(room.code, {
+    ...m,
+    positionMs: Math.max(0, positionMs),
+    anchorTime: Date.now(),
+  })
+}
+
 // Host grants playback control to a player (or back to themselves).
 export async function grantMediaControl(room: Room, controllerId: string): Promise<void> {
   await writeMedia(room.code, { ...baseMedia(room), controllerId })
