@@ -6,6 +6,7 @@ import { BoardView } from './BoardView'
 import { ClueView } from './ClueView'
 import { OutcomeCard } from './OutcomeCard'
 import { FinalRound } from './FinalRound'
+import { ScoreChart } from './ScoreChart'
 import { useAudio } from '../../hooks/useAudio'
 import { BackdropOrb } from '../ui/BackdropOrb'
 import {
@@ -141,50 +142,6 @@ function EndConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCan
           <button className="secondary btn-lg" style={{ flex: 1 }} onClick={onCancel}>Cancel</button>
         </div>
       </div>
-    </div>
-  )
-}
-
-// ── Score chart (info rail) ───────────────────────────────────────────────────
-
-function ScoreChart({ room, user }: { room: Room; user: User }) {
-  const sorted = Object.values(room.players).sort((a, b) => b.score - a.score)
-  const answering = room.clueState?.activeAnswerPlayerId
-  const maxScore = Math.max(1, ...sorted.map((p) => p.score).filter((s) => s > 0))
-
-  return (
-    <div className="panel elevated-panel stack score-chart">
-      <div className="eyebrow" style={{ marginBottom: '0.25rem' }}>Scores</div>
-      {sorted.map((p, i) => {
-        const isMe = p.uid === user.uid
-        const isChooser = p.uid === room.currentChooserId
-        const isAnswering = p.uid === answering
-        const pct = p.score > 0 ? Math.max(2, (p.score / maxScore) * 100) : 0
-        return (
-          <div key={p.uid} className={`chart-row${isAnswering ? ' active' : ''}`}>
-            <span className="rank-pill chart-rank">{i + 1}</span>
-            <div className="chart-name-block">
-              <span className={`chart-name${isMe ? ' me' : ''}`}>{p.name}</span>
-              <div className="player-meta" style={{ marginTop: '0.1rem' }}>
-                {p.isHost && <span className="tag" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Host</span>}
-                {isChooser && <span className="tag chooser-tag" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Chooser</span>}
-                {isAnswering && <span className="tag answer-tag" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Answering</span>}
-              </div>
-            </div>
-            <div className="chart-col">
-              <div className="chart-track">
-                <div
-                  className={`chart-bar${isMe ? ' me' : ''}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <span className={`chart-value${p.score < 0 ? ' negative' : ''}`}>
-                ${p.score.toLocaleString()}
-              </span>
-            </div>
-          </div>
-        )
-      })}
     </div>
   )
 }
@@ -394,7 +351,12 @@ export function JeopardyGame({ room, user, pack }: Props) {
         </div>
 
         <aside className="info-rail">
-          <ScoreChart room={room} user={user} />
+          <ScoreChart
+            players={room.players}
+            currentUid={user.uid}
+            chooserId={room.currentChooserId}
+            answeringId={room.clueState?.activeAnswerPlayerId}
+          />
           <ActivityLog room={room} />
         </aside>
       </main>
