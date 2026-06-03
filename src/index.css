@@ -733,6 +733,59 @@ h1, h2, h3, p { margin: 0; }
   padding-top: 0.5rem; border-top: 1px solid var(--line);
 }
 .media-grant select { flex: 1; }
+/* ── Content pages (leaderboard / how-to-play / settings) ────────────────────── */
+.narrow-page { max-width: 860px; margin: 0 auto; width: 100%; }
+.page-title { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 900; letter-spacing: 0.01em; }
+.section-heading { font-size: 1.15rem; font-weight: 800; color: var(--text); }
+
+/* Leaderboard table */
+.leaderboard-card { padding: 0.5rem 0.65rem; }
+.lb-row {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr) 4rem 4rem 5.5rem 6rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.5rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+}
+.lb-row + .lb-row { border-top: 1px solid var(--line); border-radius: 0; }
+.lb-head {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+.lb-row.me {
+  background: linear-gradient(180deg, rgba(var(--teal-rgb), 0.1), rgba(var(--teal-rgb), 0.04));
+  border-color: rgba(var(--teal-rgb), 0.22);
+  border-radius: 14px;
+}
+.lb-rank { text-align: center; }
+.lb-row .lb-rank.rank-pill { padding: 0.25rem 0; min-width: 0; }
+.lb-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-num { text-align: right; font-variant-numeric: tabular-nums; font-size: 0.92rem; }
+.lb-total { font-weight: 800; color: #f6df9e; }
+
+/* How to play */
+.howto-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.9rem; }
+.howto-step { display: flex; gap: 0.9rem; align-items: flex-start; }
+.howto-step-num {
+  flex: 0 0 auto; width: 2rem; height: 2rem; border-radius: 50%;
+  display: grid; place-items: center; font-weight: 900;
+  background: linear-gradient(135deg, var(--gold), #c97a5c); color: #2a1410;
+  box-shadow: 0 0 12px rgba(var(--gold-rgb), 0.25);
+}
+.howto-step-title { font-size: 1rem; font-weight: 800; margin-bottom: 0.2rem; }
+.howto-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.9rem; }
+.howto-mode-title { font-size: 1.05rem; font-weight: 800; color: var(--gold); margin-bottom: 0.35rem; }
+.howto-cta { text-align: center; padding-top: 0.5rem; }
+.howto-cta-link {
+  color: var(--gold); font-weight: 800; text-decoration: none; font-size: 1.05rem;
+  text-shadow: 0 0 16px rgba(var(--gold-rgb), 0.2);
+}
+.howto-cta-link:hover { filter: brightness(1.1); }
 
 /* ── Flash overlays (result pulse on page wrapper) ───────────────────────────── */
 .flash-correct::after,
@@ -778,6 +831,13 @@ h1, h2, h3, p { margin: 0; }
 }
 @media (max-width: 720px) {
   .features-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .howto-steps, .howto-modes { grid-template-columns: 1fr; }
+  .lb-row {
+    grid-template-columns: 2rem minmax(0, 1fr) 3.4rem 5rem;
+    gap: 0.4rem;
+  }
+  .lb-row .lb-num:nth-child(3),
+  .lb-row .lb-num:nth-child(5) { display: none; }
 }
 @media (max-width: 640px) {
   .page { padding: 0.6rem; }

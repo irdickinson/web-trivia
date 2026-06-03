@@ -21,6 +21,7 @@ interface AuthContextValue {
   signInWithEmail: (email: string, password: string) => Promise<void>
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>
   upgradeAccount: (email: string, password: string, displayName: string) => Promise<void>
+  updateDisplayName: (displayName: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -63,6 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser({ ...linked, displayName: sanitizeDisplayName(displayName) } as User)
   }
 
+  async function updateDisplayName(displayName: string) {
+    if (!user) throw new Error('No authenticated user.')
+    const clean = sanitizeDisplayName(displayName)
+    await updateProfile(user, { displayName: clean })
+    setUser({ ...user, displayName: clean } as User)
+  }
+
   async function signOut() {
     await firebaseSignOut(auth)
   }
@@ -77,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithEmail,
         signUpWithEmail,
         upgradeAccount,
+        updateDisplayName,
         signOut,
       }}
     >

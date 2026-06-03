@@ -12,6 +12,9 @@ const Home = lazy(() => import('./pages/Home'))
 const UpgradeAccount = lazy(() => import('./pages/UpgradeAccount'))
 const Lobby = lazy(() => import('./pages/Lobby'))
 const Room = lazy(() => import('./pages/Room'))
+const Leaderboard = lazy(() => import('./pages/Leaderboard'))
+const HowToPlay = lazy(() => import('./pages/HowToPlay'))
+const Settings = lazy(() => import('./pages/Settings'))
 
 // Reads ?signin=1 or ?signup=1 from URL and auto-opens the auth modal
 function AuthParamHandler() {
@@ -60,6 +63,9 @@ export default function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/lobby" element={<RequireAuth><Lobby /></RequireAuth>} />
                 <Route path="/upgrade" element={<RequireAuth anonymousOnly><UpgradeAccount /></RequireAuth>} />
+                <Route path="/leaderboards" element={<Leaderboard />} />
+                <Route path="/how-to-play" element={<HowToPlay />} />
+                <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
               </Route>
 
               {/* Full-screen game page — no site header */}
