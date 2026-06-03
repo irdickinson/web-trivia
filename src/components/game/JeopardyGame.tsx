@@ -6,6 +6,7 @@ import { BoardView } from './BoardView'
 import { ClueView } from './ClueView'
 import { OutcomeCard } from './OutcomeCard'
 import { FinalRound } from './FinalRound'
+import { MediaPlayer } from './MediaPlayer'
 import { ScoreChart } from './ScoreChart'
 import { useAudio } from '../../hooks/useAudio'
 import { BackdropOrb } from '../ui/BackdropOrb'
@@ -351,6 +352,8 @@ export function JeopardyGame({ room, user, pack }: Props) {
         </div>
 
         <aside className="info-rail">
+          <ScoreChart room={room} user={user} />
+          <MediaPlayer room={room} user={user} audio={audio} />
           <ScoreChart
             players={room.players}
             currentUid={user.uid}

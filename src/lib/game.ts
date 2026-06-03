@@ -764,6 +764,7 @@ export async function returnToLobby(roomCode: string): Promise<void> {
     board: {},
     clueState: null,
     finalRound: null,
+    media: null,
     messages: [],
     currentChooserId: null,
     chooserRotationIndex: 0,
