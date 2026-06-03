@@ -1,9 +1,40 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Dev-only open rules — will be locked down before production
-    match /{document=**} {
-      allow read, write: if true;
+    match /rooms/{roomCode} {
+      // Unauthenticated users have no access
+      allow read: if request.auth != null;
+
+      // Only authenticated users can create a room, and they must declare themselves host
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.hostId
+        && request.resource.data.phase == 'lobby';
+
+      allow update: if request.auth != null && (
+        // Host has full control
+        resource.data.hostId == request.auth.uid
+
+        // Players in the room can make scoped in-game writes (buzz, answer, wager)
+        // but cannot change structural fields (code, hostId, settings, timestamps)
+        || (
+          request.auth.uid in resource.data.players
+          && resource.data.phase != 'finished'
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(
+               ['code', 'hostId', 'settings', 'createdAt', 'expiresAt']
+             )
+        )
+
+        // Players not yet in the room can join during the lobby phase
+        || (
+          resource.data.phase == 'lobby'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players'])
+          && request.resource.data.players.keys().hasAll(resource.data.players.keys())
+          && request.auth.uid in request.resource.data.players
+        )
+      );
+
+      // Rooms are never hard-deleted (they expire via expiresAt)
+      allow delete: if false;
     }
   }
 }
