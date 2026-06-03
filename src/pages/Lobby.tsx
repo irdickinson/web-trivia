@@ -2,8 +2,22 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { createRoom, joinRoom, DEFAULT_SETTINGS } from '../lib/rooms'
-import { GameSettings } from '../types/game'
+import { GameMode, GameSettings } from '../types/game'
 import { PageMeta } from '../components/seo/PageMeta'
+
+const MODE_ANSWER_DEFAULTS: Record<GameMode, number> = {
+  'jeopardy': 15,
+  'classic': 20,
+  'multiple-choice': 12,
+  'speed': 15,
+}
+
+const MODE_DESCRIPTIONS: Record<GameMode, string> = {
+  'jeopardy': 'Buzz in before anyone else, then answer solo',
+  'classic': 'Everyone types simultaneously — all correct answers score',
+  'multiple-choice': 'Choose from four options, everyone answers at once',
+  'speed': 'First correct answer wins the clue',
+}
 
 export default function Lobby() {
   const { user } = useAuth()
@@ -22,6 +36,10 @@ export default function Lobby() {
 
   function patch(delta: Partial<GameSettings>) {
     setSettings((s) => ({ ...s, ...delta }))
+  }
+
+  function handleModeChange(mode: GameMode) {
+    patch({ mode, answerTimeSeconds: MODE_ANSWER_DEFAULTS[mode] })
   }
 
   async function handleCreate() {
@@ -87,6 +105,23 @@ export default function Lobby() {
               />
             </label>
 
+            {/* Mode selector */}
+            <div className="stack" style={{ gap: '0.4rem' }}>
+              <span className="eyebrow" style={{ marginBottom: 0 }}>Game mode</span>
+              <select
+                value={settings.mode}
+                onChange={(e) => handleModeChange(e.target.value as GameMode)}
+              >
+                <option value="classic">Classic</option>
+                <option value="jeopardy">Jeopardy</option>
+                <option value="multiple-choice">Multiple Choice</option>
+                <option value="speed">Speed</option>
+              </select>
+              <p className="muted" style={{ fontSize: '0.8rem', margin: 0 }}>
+                {MODE_DESCRIPTIONS[settings.mode]}
+              </p>
+            </div>
+
             <div className="settings-grid">
               <label>
                 <span className="eyebrow" style={{ marginBottom: 0 }}>Categories</span>
@@ -125,28 +160,32 @@ export default function Lobby() {
                 <input
                   type="number"
                   min={5}
-                  max={30}
+                  max={60}
                   step={5}
                   value={settings.answerTimeSeconds}
                   onChange={(e) => patch({ answerTimeSeconds: parseInt(e.target.value) })}
                 />
               </label>
-              <label>
-                <span className="eyebrow" style={{ marginBottom: 0 }}>Buzz window (s)</span>
-                <select
-                  value={settings.postRevealBuzzSeconds}
-                  onChange={(e) => patch({ postRevealBuzzSeconds: parseInt(e.target.value) })}
-                >
-                  {[3, 5, 8, 10, 15].map((n) => <option key={n} value={n}>{n}s</option>)}
-                </select>
-              </label>
+              {settings.mode === 'jeopardy' && (
+                <label>
+                  <span className="eyebrow" style={{ marginBottom: 0 }}>Buzz window (s)</span>
+                  <select
+                    value={settings.postRevealBuzzSeconds}
+                    onChange={(e) => patch({ postRevealBuzzSeconds: parseInt(e.target.value) })}
+                  >
+                    {[5, 8, 10, 15].map((n) => <option key={n} value={n}>{n}s</option>)}
+                  </select>
+                </label>
+              )}
             </div>
 
             <div className="settings-grid checks">
               <Check label="Deduct on wrong" checked={settings.deductOnWrongAnswer} onChange={(v) => patch({ deductOnWrongAnswer: v })} />
               <Check label="Allow negative scores" checked={settings.allowNegativeScores} onChange={(v) => patch({ allowNegativeScores: v })} />
               <Check label="Typo tolerance" checked={settings.typoTolerance} onChange={(v) => patch({ typoTolerance: v })} />
-              <Check label="Buzz rebound" checked={settings.allowBuzzRebound} onChange={(v) => patch({ allowBuzzRebound: v })} />
+              {settings.mode === 'jeopardy' && (
+                <Check label="Buzz rebound" checked={settings.allowBuzzRebound} onChange={(v) => patch({ allowBuzzRebound: v })} />
+              )}
               <Check label="Progressive reveal" checked={settings.progressiveReveal} onChange={(v) => patch({ progressiveReveal: v })} />
               <Check label="Enable final round" checked={settings.enableFinalRound} onChange={(v) => patch({ enableFinalRound: v })} />
             </div>
