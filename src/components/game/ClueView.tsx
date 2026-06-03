@@ -227,6 +227,13 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
             </div>
           )}
 
+          {/* Multiple choice — no options fallback */}
+          {mode === 'multiple-choice' && cs.status === 'answering' && !cs.options && (
+            <p className="muted" style={{ fontSize: '0.88rem' }}>
+              Not enough board answers to generate choices — type your answer above.
+            </p>
+          )}
+
           {/* Multiple choice */}
           {mode === 'multiple-choice' && cs.status === 'answering' && cs.options && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.65rem', flex: 1 }}>
