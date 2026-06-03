@@ -12,7 +12,7 @@ const MODE_ANSWER_DEFAULTS: Record<GameMode, number> = {
   'speed': 10,
 }
 
-const ANSWER_TIME_OPTIONS = [5, 10, 15, 20, 30, 45, 60]
+const ANSWER_TIME_OPTIONS = [3, 5, 8, 10, 15, 20, 30, 45, 60]
 
 const MODE_DESCRIPTIONS: Record<GameMode, string> = {
   'jeopardy': 'Buzz in before anyone else, then answer solo',
