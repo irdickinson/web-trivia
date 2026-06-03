@@ -21,7 +21,7 @@ import { matchAnswer, normalizeAnswer } from './fuzzy'
 // ─────────────────────────────────────────────────────────────────────────────
 
 function uid(): string {
-  return Math.random().toString(36).slice(2, 10)
+  return crypto.randomUUID().replace(/-/g, '').slice(0, 8)
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -112,7 +112,7 @@ function buildMCOptions(
 
 export async function startGame(room: Room, pack: QuestionPack): Promise<void> {
   const board = buildBoard(pack, room.settings)
-  const playerUids = Object.keys(room.players)
+  const playerUids = sortedPlayerUids(room)
   if (playerUids.length === 0) return
 
   const firstChooserId = playerUids[0]
@@ -134,8 +134,12 @@ export async function startGame(room: Room, pack: QuestionPack): Promise<void> {
   await updateDoc(doc(db, 'rooms', room.code), updates)
 }
 
+function sortedPlayerUids(room: Room): string[] {
+  return Object.keys(room.players).sort()
+}
+
 function nextChooser(room: Room): string {
-  const uids = Object.keys(room.players)
+  const uids = sortedPlayerUids(room)
   if (uids.length === 0) return room.hostId
   const next = (room.chooserRotationIndex + 1) % uids.length
   return uids[next]
@@ -641,9 +645,9 @@ export async function initFinalRound(room: Room, pack: QuestionPack): Promise<vo
   const eligible = pack.questions.filter((q) => q.isFinalEligible)
   const selected = shuffle(eligible).slice(0, count)
 
-  const playerEntries: Record<string, { wager: number; answers: Record<string, string>; correctCount: number; doubled: boolean }> = {}
+  const playerEntries: Record<string, { wager: number | null; answers: Record<string, string>; correctCount: number; doubled: boolean }> = {}
   for (const uid of Object.keys(room.players)) {
-    playerEntries[uid] = { wager: 0, answers: {}, correctCount: 0, doubled: false }
+    playerEntries[uid] = { wager: null, answers: {}, correctCount: 0, doubled: false }
   }
 
   await updateDoc(doc(db, 'rooms', room.code), {
@@ -676,7 +680,7 @@ export async function submitFinalWager(
   const fr = room.finalRound
   if (fr) {
     const allWagered = Object.keys(room.players).every(
-      (pid) => pid === uid || fr.playerEntries[pid]?.wager !== undefined,
+      (pid) => pid === uid || fr.playerEntries[pid]?.wager !== null,
     )
     if (allWagered) {
       updates.phase = 'final-answer'
@@ -737,7 +741,7 @@ export async function revealFinalResults(room: Room): Promise<void> {
   for (const [uid, entry] of Object.entries(fr.playerEntries)) {
     const correct = updates[`finalRound.playerEntries.${uid}.correctCount`] as number
     const doubled = correct === topCorrect && correct > 0
-    const bonus = doubled ? entry.wager : 0
+    const bonus = doubled ? (entry.wager ?? 0) : 0
     const newScore = (room.players[uid]?.score ?? 0) + bonus
 
     updates[`finalRound.playerEntries.${uid}.doubled`] = doubled

@@ -84,7 +84,7 @@ export interface ClueState {
 }
 
 export interface FinalPlayerEntry {
-  wager: number
+  wager: number | null   // null = not yet submitted
   answers: Record<string, string>     // questionId → submitted text
   correctCount: number
   doubled: boolean

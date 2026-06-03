@@ -44,11 +44,15 @@ export function matchAnswer(
     return { matched: true, matchedAgainst: acceptedAnswers[exactIdx], normalizedAttempt }
   }
 
-  // 2. Variant matching — iterate all accepted strings
+  // 2. Variant matching — one string fully contains the other (min 4 chars each to
+  //    avoid false positives). Covers "Roosevelt" matching "Theodore Roosevelt" and vice versa.
   if (options.variantMatching) {
     for (let i = 0; i < normalizedAccepted.length; i++) {
-      if (normalizedAccepted[i] === normalizedAttempt) {
-        return { matched: true, matchedAgainst: acceptedAnswers[i], normalizedAttempt }
+      const accepted = normalizedAccepted[i]
+      if (normalizedAttempt.length >= 4 && accepted.length >= 4) {
+        if (normalizedAttempt.includes(accepted) || accepted.includes(normalizedAttempt)) {
+          return { matched: true, matchedAgainst: acceptedAnswers[i], normalizedAttempt }
+        }
       }
     }
   }
