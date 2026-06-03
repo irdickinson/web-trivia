@@ -716,6 +716,24 @@ h1, h2, h3, p { margin: 0; }
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* ── Media player (info rail) ────────────────────────────────────────────────── */
+.media-player { gap: 0.6rem; position: relative; }
+.media-now { font-size: 0.74rem; letter-spacing: 0.04em; }
+.media-track {
+  font-weight: 700; font-size: 0.9rem;
+  padding: 0.55rem 0.7rem; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(var(--teal-rgb), 0.12), rgba(var(--teal-rgb), 0.05));
+  border: 1px solid rgba(var(--teal-rgb), 0.22);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.media-row { display: flex; gap: 0.4rem; }
+.media-row button { flex: 1; }
+.media-grant {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding-top: 0.5rem; border-top: 1px solid var(--line);
+}
+.media-grant select { flex: 1; }
+
 /* ── Flash overlays (result pulse on page wrapper) ───────────────────────────── */
 .flash-correct::after,
 .flash-incorrect::after,
