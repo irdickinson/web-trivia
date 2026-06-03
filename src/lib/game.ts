@@ -647,7 +647,7 @@ export async function initFinalRound(room: Room, pack: QuestionPack): Promise<vo
 
   const playerEntries: Record<string, { wager: number | null; answers: Record<string, string>; correctCount: number; doubled: boolean }> = {}
   for (const uid of Object.keys(room.players)) {
-    playerEntries[uid] = { wager: null, answers: {}, correctCount: 0, doubled: false }
+    playerEntries[uid] = { wager: null, answers: {}, correctCount: 0, earnedWager: false }
   }
 
   await updateDoc(doc(db, 'rooms', room.code), {
@@ -723,29 +723,28 @@ export async function revealFinalResults(room: Room): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updates: Record<string, any> = {}
 
-  let topCorrect = 0
+  // Pass threshold: majority of questions correct earns the wager,
+  // otherwise the wager is deducted. 1-question final: must be correct.
+  const threshold = Math.ceil(fr.questions.length / 2)
 
-  // Score each player.
   for (const [uid, entry] of Object.entries(fr.playerEntries)) {
     let correct = 0
     for (const q of fr.questions) {
       const submitted = entry.answers[q.id] ?? ''
-      const accepted = q.acceptedAnswers
-      if (matchAnswer(submitted, accepted, opts).matched) correct++
+      if (matchAnswer(submitted, q.acceptedAnswers, opts).matched) correct++
     }
-    topCorrect = Math.max(topCorrect, correct)
+
+    const earnedWager = correct >= threshold
+    const wager = entry.wager ?? 0
+    const delta = earnedWager ? wager : -wager
+    const cur = room.players[uid]?.score ?? 0
+    const newScore = room.settings.allowNegativeScores
+      ? cur + delta
+      : Math.max(0, cur + delta)
+
     updates[`finalRound.playerEntries.${uid}.correctCount`] = correct
-  }
-
-  // Award wagers + mark "doubled" for top scorers.
-  for (const [uid, entry] of Object.entries(fr.playerEntries)) {
-    const correct = updates[`finalRound.playerEntries.${uid}.correctCount`] as number
-    const doubled = correct === topCorrect && correct > 0
-    const bonus = doubled ? (entry.wager ?? 0) : 0
-    const newScore = (room.players[uid]?.score ?? 0) + bonus
-
-    updates[`finalRound.playerEntries.${uid}.doubled`] = doubled
-    if (bonus > 0) updates[`players.${uid}.score`] = newScore
+    updates[`finalRound.playerEntries.${uid}.earnedWager`] = earnedWager
+    if (delta !== 0) updates[`players.${uid}.score`] = newScore
   }
 
   updates['finalRound.status'] = 'results'

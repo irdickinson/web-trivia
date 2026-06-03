@@ -87,7 +87,7 @@ export interface FinalPlayerEntry {
   wager: number | null   // null = not yet submitted
   answers: Record<string, string>     // questionId → submitted text
   correctCount: number
-  doubled: boolean
+  earnedWager: boolean   // true = wager added to score, false = wager deducted
 }
 
 export interface FinalRoundState {
