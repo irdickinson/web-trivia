@@ -18,12 +18,14 @@ function WagerPhase({ room, user, onSubmit }: { room: Room; user: User; onSubmit
   const maxWager = Math.max(0, myScore)
   const fr = room.finalRound!
   const myEntry = fr.playerEntries[user.uid]
-  const hasWagered = myEntry?.wager !== undefined && myEntry.wager > 0
+  const hasWagered = myEntry?.wager != null
 
   const [wager, setWager] = useState(0)
   const [submitted, setSubmitted] = useState(hasWagered)
 
-  const waitingCount = Object.keys(room.players).filter((uid) => !fr.playerEntries[uid]?.wager).length
+  const waitingCount = Object.keys(room.players).filter(
+    (uid) => fr.playerEntries[uid]?.wager === null || fr.playerEntries[uid]?.wager === undefined,
+  ).length
 
   return (
     <div className="stack" style={{ maxWidth: '460px', width: '100%' }}>
@@ -51,7 +53,7 @@ function WagerPhase({ room, user, onSubmit }: { room: Room; user: User; onSubmit
 
         {submitted ? (
           <p className="muted" style={{ textAlign: 'center', fontSize: '0.9rem', padding: '0.5rem 0' }}>
-            Wager locked: <strong style={{ color: 'var(--text)' }}>${myEntry.wager.toLocaleString()}</strong>
+            Wager locked: <strong style={{ color: 'var(--text)' }}>${(myEntry?.wager ?? 0).toLocaleString()}</strong>
           </p>
         ) : (
           <>
@@ -115,7 +117,7 @@ function AnswerPhase({ room, user, onSubmit }: { room: Room; user: User; onSubmi
         <div className="eyebrow">Final round</div>
         <h2 style={{ fontWeight: 900, fontSize: '1.6rem' }}>Answer the Clues</h2>
         <p className="muted" style={{ marginTop: '0.35rem', fontSize: '0.88rem' }}>
-          Wager: <strong style={{ color: 'var(--gold)' }}>${myEntry?.wager.toLocaleString()}</strong>
+          Wager: <strong style={{ color: 'var(--gold)' }}>${(myEntry?.wager ?? 0).toLocaleString()}</strong>
         </p>
       </div>
 
