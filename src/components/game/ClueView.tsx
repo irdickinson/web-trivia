@@ -101,9 +101,15 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
       if ((cs.status === 'buzzed' || cs.status === 'answering') && cs.answerDeadline && Date.now() > cs.answerDeadline) {
         onHostTimeoutRef.current()
       }
+      if (cs.status === 'answering' && !isJeopardy) {
+        const allAnswered = Object.keys(room.players).every(
+          (pid) => cs.submittedAnswers[pid] !== undefined,
+        )
+        if (allAnswered) onHostTimeoutRef.current()
+      }
     }, 200)
     return () => clearInterval(id)
-  }, [isHost, cs.status, cs.buzzDeadline, cs.answerDeadline])
+  }, [isHost, isJeopardy, cs.status, cs.buzzDeadline, cs.answerDeadline, cs.submittedAnswers, room.players])
 
   // Catch deadlines that expired while the host's tab was backgrounded (browsers throttle
   // setInterval when hidden). On becoming visible, fire the timeout immediately if overdue.

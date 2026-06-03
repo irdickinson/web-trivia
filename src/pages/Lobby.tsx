@@ -7,10 +7,12 @@ import { PageMeta } from '../components/seo/PageMeta'
 
 const MODE_ANSWER_DEFAULTS: Record<GameMode, number> = {
   'jeopardy': 15,
-  'classic': 20,
-  'multiple-choice': 12,
-  'speed': 15,
+  'classic': 15,
+  'multiple-choice': 10,
+  'speed': 10,
 }
+
+const ANSWER_TIME_OPTIONS = [5, 10, 15, 20, 30, 45, 60]
 
 const MODE_DESCRIPTIONS: Record<GameMode, string> = {
   'jeopardy': 'Buzz in before anyone else, then answer solo',
@@ -157,14 +159,12 @@ export default function Lobby() {
               </label>
               <label>
                 <span className="eyebrow" style={{ marginBottom: 0 }}>Answer timer (s)</span>
-                <input
-                  type="number"
-                  min={5}
-                  max={60}
-                  step={5}
+                <select
                   value={settings.answerTimeSeconds}
                   onChange={(e) => patch({ answerTimeSeconds: parseInt(e.target.value) })}
-                />
+                >
+                  {ANSWER_TIME_OPTIONS.map((n) => <option key={n} value={n}>{n}s</option>)}
+                </select>
               </label>
               {settings.mode === 'jeopardy' && (
                 <label>
