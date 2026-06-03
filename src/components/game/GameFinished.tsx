@@ -1,5 +1,6 @@
 import { Player } from '../../types/game'
 import { BackdropOrb } from '../ui/BackdropOrb'
+import { ScoreChartRows } from './ScoreChart'
 
 interface Props {
   players: Record<string, Player>
@@ -32,25 +33,8 @@ export function GameFinished({ players, currentUid, onPlayAgain }: Props) {
 
         <div className="divider" />
 
-        <div className="stack compact-stack">
-          {sorted.map((player, i) => (
-            <div
-              key={player.uid}
-              className={`player-row scoreboard-row${player.uid === currentUid ? ' me' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}
-            >
-              <span className="rank-pill" style={{ minWidth: '2rem', textAlign: 'center' }}>{i + 1}</span>
-              <span style={{ flex: 1, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {player.name}
-              </span>
-              <span
-                className="score-value"
-                style={player.score < 0 ? { color: 'var(--danger)' } : undefined}
-              >
-                ${player.score.toLocaleString()}
-              </span>
-            </div>
-          ))}
+        <div className="stack score-chart">
+          <ScoreChartRows players={players} currentUid={currentUid} />
         </div>
 
         <button className="btn-lg" style={{ width: '100%' }} onClick={onPlayAgain}>
