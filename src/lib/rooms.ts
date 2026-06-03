@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   questionCountPerCategory: 5,
   pointValues: [100, 200, 300, 400, 500],
   revealSpeedMs: 40,
-  answerTimeSeconds: 20,
+  answerTimeSeconds: 15,
   postRevealBuzzSeconds: 8,
   allowNegativeScores: true,
   deductOnWrongAnswer: true,
