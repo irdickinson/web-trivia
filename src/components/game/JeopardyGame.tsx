@@ -352,14 +352,13 @@ export function JeopardyGame({ room, user, pack }: Props) {
         </div>
 
         <aside className="info-rail">
-          <ScoreChart room={room} user={user} />
-          <MediaPlayer room={room} user={user} audio={audio} />
           <ScoreChart
             players={room.players}
             currentUid={user.uid}
             chooserId={room.currentChooserId}
             answeringId={room.clueState?.activeAnswerPlayerId}
           />
+          <MediaPlayer room={room} user={user} audio={audio} />
           <ActivityLog room={room} />
         </aside>
       </main>
