@@ -105,6 +105,23 @@ export function ClueView({ room, user, onBuzz, onSubmitAnswer, onSubmitChoice, o
     return () => clearInterval(id)
   }, [isHost, cs.status, cs.buzzDeadline, cs.answerDeadline])
 
+  // Catch deadlines that expired while the host's tab was backgrounded (browsers throttle
+  // setInterval when hidden). On becoming visible, fire the timeout immediately if overdue.
+  useEffect(() => {
+    if (!isHost) return
+    function handleVisibility() {
+      if (document.visibilityState !== 'visible') return
+      const now = Date.now()
+      if (cs.status === 'revealing' && cs.buzzDeadline && now > cs.buzzDeadline) {
+        onHostTimeoutRef.current()
+      } else if ((cs.status === 'buzzed' || cs.status === 'answering') && cs.answerDeadline && now > cs.answerDeadline) {
+        onHostTimeoutRef.current()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [isHost, cs.status, cs.buzzDeadline, cs.answerDeadline])
+
   const hostTransitionedRef = useRef(false)
   useEffect(() => {
     if (!isHost || isJeopardy || hostTransitionedRef.current) return

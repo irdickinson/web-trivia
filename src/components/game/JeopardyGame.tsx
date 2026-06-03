@@ -226,6 +226,7 @@ export function JeopardyGame({ room, user, pack }: Props) {
   const processedOutcomeRef = useRef<string | null>(null)
   const flashTimerRef = useRef<number | null>(null)
   const transitionTimerRef = useRef<number | null>(null)
+  const buzzingRef = useRef(false)
 
   // Detect clue resolution → SFX + flash class + host auto-transition
   useEffect(() => {
@@ -283,8 +284,14 @@ export function JeopardyGame({ room, user, pack }: Props) {
   // ── Clue actions ────────────────────────────────────────────────────────────
 
   async function handleBuzz() {
+    if (buzzingRef.current) return
+    buzzingRef.current = true
     audio.playSfx('buzz')
-    await buzz(room.code, user.uid, room.settings.answerTimeSeconds)
+    try {
+      await buzz(room.code, user.uid, room.settings.answerTimeSeconds)
+    } finally {
+      buzzingRef.current = false
+    }
   }
 
   async function handleSubmitAnswer(answer: string) {
