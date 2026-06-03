@@ -61,6 +61,7 @@ export async function createRoom(
     finalRound: null,
     media: null,
     messages: [],
+    chat: [],
     createdAt: now,
     expiresAt: now + 2 * 60 * 60 * 1000,
   }

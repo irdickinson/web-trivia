@@ -7,6 +7,7 @@ import { ClueView } from './ClueView'
 import { OutcomeCard } from './OutcomeCard'
 import { FinalRound } from './FinalRound'
 import { MediaPlayer } from './MediaPlayer'
+import { ChatPanel } from './ChatPanel'
 import { ScoreChart } from './ScoreChart'
 import { useAudio } from '../../hooks/useAudio'
 import { BackdropOrb } from '../ui/BackdropOrb'
@@ -359,6 +360,7 @@ export function JeopardyGame({ room, user, pack }: Props) {
             answeringId={room.clueState?.activeAnswerPlayerId}
           />
           <MediaPlayer room={room} user={user} audio={audio} />
+          <ChatPanel room={room} user={user} />
           <ActivityLog room={room} />
         </aside>
       </main>
