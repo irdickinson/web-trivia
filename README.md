@@ -1,89 +1,105 @@
 # Web Trivia
 
-A real-time multiplayer trivia game. Hosts create rooms, players join by code, and everyone competes across multiple game modes.
+A real-time multiplayer trivia game in the style of Jeopardy. Hosts create a room, players join with a 6-character code, and everyone competes live across several game modes. A wager-based Final Round closes out the game.
 
-## Game Modes
+## Game modes
 
 | Mode | How it works |
 |---|---|
-| **Classic** | Everyone sees the question and types an answer before the timer expires |
-| **Speed** | Race to be the first player to type the correct answer |
-| **Multiple Choice** | Pick from four options before the timer expires |
-| **Fastest Finger** | Buzz in first to claim the right to answer; wrong answers pass to remaining players |
+| **Classic** | Everyone sees the clue and types an answer at the same time; every correct answer scores. |
+| **Jeopardy** | Buzz in before anyone else to claim the clue, then answer solo. Wrong answers can rebound to the remaining players. |
+| **Multiple Choice** | Choose from four options; everyone answers at once. |
+| **Speed** | First player to type a correct answer wins the clue. |
 
-Typed-answer modes use fuzzy matching — case-insensitive, typo-tolerant, and partial names (e.g. "Napoleon") are accepted.
+Typed-answer modes use fuzzy matching in `src/lib/fuzzy.ts` — case-insensitive, typo-tolerant, and accepting of partial names (e.g. "Roosevelt" matches "Theodore Roosevelt").
 
-## Tech Stack
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19 + TypeScript + Vite 6 |
-| Styling | Tailwind CSS v4 |
+| Frontend | React 19 + TypeScript 5.8 + Vite 6 |
+| Styling | Tailwind CSS v4 (layout only) + a custom CSS design system in `src/index.css` |
 | Routing | React Router v7 |
 | Real-time / DB | Firebase Firestore |
 | Auth | Firebase Auth (email/password + anonymous guest mode) |
-| Server logic | Firebase Cloud Functions |
-| Hosting | Firebase Hosting |
 
-## Local Development
+There is no backend server. All game state lives in a single Firestore room document at `rooms/{code}`; the **host's client** drives every timer-based transition and writes the result, while other clients render the shared state and submit their own actions. Atomic operations (first-buzz-wins, room joins) use Firestore transactions.
+
+## Local development
 
 ### Prerequisites
 
 - Node.js 18+
-- Java 11+ (required by Firebase emulators)
+- Java 11+ (required by the Firebase emulators)
 - Firebase CLI: `npm install -g firebase-tools`
 
 ### Running locally
 
 ```bash
-# Install dependencies
 npm install
 
-# Terminal 1 — Firebase emulators (Auth + Firestore + Functions)
+# Terminal 1 — Firebase emulators (Auth + Firestore)
 firebase emulators:start
 
 # Terminal 2 — Vite dev server
 npm run dev
 ```
 
-The app automatically connects to local emulators in development mode. No Firebase project or credentials are needed for local development.
+In development (`import.meta.env.DEV`) the app points itself at the local emulators automatically — no Firebase project or credentials are required.
+
+| Service | URL |
+|---|---|
+| App | http://localhost:5173 |
+| Emulator UI | http://localhost:4000 |
+| Auth emulator | 127.0.0.1:9099 |
+| Firestore emulator | 127.0.0.1:8180 |
 
 ### Dev admin account
 
-A quick-fill button labeled **[DEV] Fill admin credentials** appears on the sign-in modal in development mode. Use it to log in as the admin account without typing:
+A **[DEV] Fill admin credentials** button appears on the sign-in modal in development. It fills `admin@webtrivia.dev` / `Admin1234!`. Create the account once via the Create Account flow (or the Emulator UI at http://localhost:4000/auth); it persists for future dev sessions while the emulator data is retained.
 
-| Field | Value |
-|---|---|
-| Email | `admin@webtrivia.dev` |
-| Password | `Admin1234!` |
-
-**First-time setup:** create this account once via the "Create Account" flow (or the Firebase Emulator UI at http://localhost:4000/auth), then it can be used for all future dev sessions.
-
-### Environment variables
-
-Credentials are only needed when deploying to production. Copy the example file and fill in your Firebase project values:
-
-```bash
-cp .env.example .env.local
-```
-
-## Project Structure
+## Project structure
 
 ```
 src/
-  components/
-    auth/     Route guards (RequireAuth, RedirectIfAuth)
-    ui/       Reusable primitives — Button, Input, Card, LoadingScreen
+  App.tsx                  Router + SiteLayout shell + auth-modal provider
+  index.css                Full design system (tokens, layout, components)
+
   context/
-    AuthContext.tsx   Auth state + sign-in / sign-up / upgrade methods
-  hooks/        Game and utility hooks (added as features are built)
+    AuthContext.tsx        Firebase auth state + sign-in/up/guest helpers
+    AuthModalContext.tsx    Auth modal open/tab state
+
+  pages/
+    Home.tsx               Landing hero (guest/sign-in) and signed-in dashboard
+    Lobby.tsx              Create / join a room + game settings
+    Room.tsx               Waiting room -> game -> finished
+    UpgradeAccount.tsx     Guest -> email account upgrade
+
+  components/
+    auth/                  AuthModal, RequireAuth route guard
+    layout/SiteHeader.tsx  Sticky navbar
+    game/                  JeopardyGame (orchestrator), BoardView, ClueView,
+                           OutcomeCard, FinalRound, GameFinished
+    room/                  RoomCode, PlayerList
+    ui/                    BackdropOrb, LoadingScreen
+
   lib/
-    firebase.ts   Firebase init; connects to emulators automatically in dev
-  pages/        One file per route
-  types/
-    game.ts       Room, Player, GameSettings, CurrentQuestion
-    question.ts   TypedQuestion, MultipleChoiceQuestion, QuestionSet
-  utils/
-    authErrors.ts   Firebase error codes → readable messages
-    sanitize.ts     Input sanitization for user-supplied content
+    firebase.ts            App init + emulator wiring
+    rooms.ts               createRoom / joinRoom / leaveRoom + DEFAULT_SETTINGS
+    game.ts                All game-state mutations (selectClue, buzz,
+                           submitAnswer, resolveClassicClue, final round, ...)
+    audio.ts               Web Audio API procedural music + SFX
+    fuzzy.ts               Answer evaluation
+
+  hooks/
+    useRoom.ts             Firestore room listener
+    useGameClock.ts        Shared deadline countdown clock
+    useAudio.ts            Music/SFX controls
+
+  types/                   game.ts, question.ts
+  data/defaultPack.ts      Built-in question set
 ```
+
+## Design
+
+Dark, warm "dusty-dusk" theme over a fixed landscape backdrop, with Fraunces as the site-wide serif. Visual styling lives in `src/index.css` outside any `@layer` so it takes precedence over Tailwind; Tailwind is used only for layout utilities. Avoid Tailwind colour/background utilities in components — use the CSS variables and classes defined in `index.css`.
