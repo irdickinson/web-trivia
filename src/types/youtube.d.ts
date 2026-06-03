@@ -8,6 +8,7 @@ declare global {
     disablekb?: number
     fs?: number
     rel?: number
+    modestbranding?: number
   }
 
   interface YTPlayer {

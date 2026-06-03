@@ -42,8 +42,12 @@ export function MediaPlayer({ room, user, audio }: Props) {
   // Latest media for the player's onStateChange callback (avoids a stale closure).
   const mediaRef = useRef(media)
   mediaRef.current = media
+  // Tracks which video the local player has loaded, so we don't re-cue (and reset
+  // position to 0) on every reconcile.
+  const loadedIdRef = useRef<string | null>(null)
 
   const [ready, setReady] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [needsGesture, setNeedsGesture] = useState(false)
   const [localMuted, setLocalMuted] = useState(false)
   const [localVol, setLocalVol] = useState(70)
@@ -60,17 +64,15 @@ export function MediaPlayer({ room, user, audio }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, media?.status])
 
-  // ── Create the hidden player once ────────────────────────────────────────────
+  // ── Create the visible player once ───────────────────────────────────────────
   useEffect(() => {
     let cancelled = false
     void loadYouTubeApi().then(() => {
       if (cancelled || !hostElRef.current || !window.YT) return
-      // A real (non-zero) size is required — browsers won't play a 0×0 player.
-      // The wrapper keeps it off-screen.
       playerRef.current = new window.YT.Player(hostElRef.current, {
-        height: '180',
-        width: '320',
-        playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0, fs: 0 },
+        height: '100%',
+        width: '100%',
+        playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0, fs: 0, modestbranding: 1 },
         events: {
           onReady: () => setReady(true),
           onStateChange: (e) => {
@@ -82,7 +84,7 @@ export function MediaPlayer({ room, user, audio }: Props) {
               (e.data === window.YT?.PlayerState.PAUSED ||
                 e.data === window.YT?.PlayerState.UNSTARTED)
             ) {
-              // We're supposed to be playing but the browser blocked autoplay.
+              // We're supposed to be playing but the browser blocked playback.
               setNeedsGesture(true)
             }
           },
@@ -113,16 +115,18 @@ export function MediaPlayer({ room, user, audio }: Props) {
     if (!ready || !p) return
 
     if (!media?.videoId) {
-      try { p.stopVideo() } catch { /* ignore */ }
+      if (loadedIdRef.current) {
+        try { p.stopVideo() } catch { /* ignore */ }
+        loadedIdRef.current = null
+      }
       return
     }
 
     const targetSec = currentMediaPositionMs(media) / 1000
-    let loaded = ''
-    try { loaded = p.getVideoData().video_id } catch { /* ignore */ }
 
-    if (loaded !== media.videoId) {
-      // New track: cue paused or load playing depending on synced status.
+    // Load/cue only when the video actually changes — re-cueing resets position.
+    if (loadedIdRef.current !== media.videoId) {
+      loadedIdRef.current = media.videoId
       if (media.status === 'playing') {
         p.loadVideoById({ videoId: media.videoId, startSeconds: targetSec })
       } else {
@@ -187,12 +191,14 @@ export function MediaPlayer({ room, user, audio }: Props) {
     setUrlInput('')
     setPos(0)
     setDur(0)
+    setCollapsed(false)
     // Cue paused at the start; the controller presses Play to begin (a direct
-    // user gesture is what unblocks audio playback).
+    // user gesture on a visible player is what unblocks audio).
     void loadMediaVideo(room, id, id)
   }
 
   function handlePlay() {
+    setCollapsed(false)
     // Start the local player inside the click handler so it counts as a gesture.
     const p = playerRef.current
     try {
@@ -217,6 +223,7 @@ export function MediaPlayer({ room, user, audio }: Props) {
   }
 
   function enableLocalAudio() {
+    setCollapsed(false)
     const p = playerRef.current
     setNeedsGesture(false)
     try {
@@ -232,15 +239,27 @@ export function MediaPlayer({ room, user, audio }: Props) {
     <div className="panel elevated-panel stack media-player">
       <div className="row between" style={{ alignItems: 'center' }}>
         <div className="eyebrow" style={{ marginBottom: 0 }}>Media</div>
-        {isActive && (
-          <span className="media-now muted">
-            {media?.status === 'playing' ? '♪ Playing' : '❚❚ Paused'}
-          </span>
-        )}
+        <div className="row gap" style={{ gap: '0.5rem', alignItems: 'center' }}>
+          {isActive && (
+            <span className="media-now muted">
+              {media?.status === 'playing' ? '♪ Playing' : '❚❚ Paused'}
+            </span>
+          )}
+          {isActive && (
+            <button
+              className="secondary mini-btn"
+              onClick={() => setCollapsed((c) => !c)}
+              title={collapsed ? 'Show video' : 'Hide video'}
+            >
+              {collapsed ? '▸' : '▾'}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Hidden, off-screen audio sink */}
-      <div className="media-sink" aria-hidden="true">
+      {/* Visible (YouTube-ToS-compliant) player. Kept mounted while collapsed so
+          audio keeps playing; collapsing just hides the frame. */}
+      <div className={`media-video${collapsed || !isActive ? ' collapsed' : ''}`}>
         <div ref={hostElRef} />
       </div>
 
@@ -251,8 +270,8 @@ export function MediaPlayer({ room, user, audio }: Props) {
       ) : (
         <p className="muted" style={{ fontSize: '0.84rem' }}>
           {canControl
-            ? 'Paste a YouTube link to play its audio for everyone in the room.'
-            : `${controllerName} can start shared audio.`}
+            ? 'Paste a YouTube link to play it for everyone in the room.'
+            : `${controllerName} can start shared media.`}
         </p>
       )}
 
