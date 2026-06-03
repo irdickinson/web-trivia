@@ -1,8 +1,10 @@
+import { useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useRoom } from '../hooks/useRoom'
 import { leaveRoom } from '../lib/rooms'
 import { startGame } from '../lib/game'
+import { recordGameResult } from '../lib/stats'
 import { DEFAULT_PACK } from '../data/defaultPack'
 import { LoadingScreen } from '../components/ui/LoadingScreen'
 import { JeopardyGame } from '../components/game/JeopardyGame'
@@ -15,6 +17,17 @@ export default function Room() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { room, loading, notFound } = useRoom(code)
+
+  // Record the result once per finished game (guarded against snapshot churn
+  // and refreshes; the stats write itself is also idempotent per game).
+  const recordedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!room || !user || room.phase !== 'finished') return
+    const key = `${room.code}-${room.createdAt}`
+    if (recordedRef.current === key) return
+    recordedRef.current = key
+    void recordGameResult(room, user.uid)
+  }, [room, user])
 
   if (loading) return <LoadingScreen />
 

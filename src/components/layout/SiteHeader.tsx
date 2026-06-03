@@ -31,8 +31,12 @@ export function SiteHeader() {
         <NavLink to="/lobby" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
           Play
         </NavLink>
-        <span className="nav-link nav-link--disabled" title="Coming soon">Leaderboards</span>
-        <span className="nav-link nav-link--disabled" title="Coming soon">How to Play</span>
+        <NavLink to="/leaderboards" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+          Leaderboards
+        </NavLink>
+        <NavLink to="/how-to-play" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+          How to Play
+        </NavLink>
       </nav>
 
       {/* Auth area */}
@@ -41,8 +45,8 @@ export function SiteHeader() {
           <>
             <div
               className="user-nav-chip"
-              onClick={() => navigate('/')}
-              title={user.email ?? ''}
+              onClick={() => navigate('/settings')}
+              title="Account settings"
             >
               <div className="user-avatar">{initials}</div>
               <span>{user.displayName ?? 'Player'}</span>
