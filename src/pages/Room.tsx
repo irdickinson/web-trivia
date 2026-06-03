@@ -9,6 +9,7 @@ import { DEFAULT_PACK } from '../data/defaultPack'
 import { LoadingScreen } from '../components/ui/LoadingScreen'
 import { JeopardyGame } from '../components/game/JeopardyGame'
 import { GameFinished } from '../components/game/GameFinished'
+import { ChatPanel } from '../components/game/ChatPanel'
 import { BackdropOrb } from '../components/ui/BackdropOrb'
 import { PageMeta } from '../components/seo/PageMeta'
 
@@ -88,7 +89,8 @@ export default function Room() {
     <main className="page center">
       <BackdropOrb />
       <PageMeta title="Game Room" description="Waiting for the host to start the game." />
-      <div className="panel elevated-panel stack" style={{ width: 'min(560px, 94vw)', padding: '1.5rem' }}>
+      <div className="stack" style={{ width: 'min(560px, 94vw)' }}>
+      <div className="panel elevated-panel stack" style={{ padding: '1.5rem' }}>
 
         <div className="topbar">
           <div>
@@ -140,6 +142,9 @@ export default function Room() {
             Waiting for the host to start…
           </p>
         )}
+      </div>
+
+      <ChatPanel room={room} user={user} />
       </div>
     </main>
   )

@@ -104,18 +104,28 @@ export interface SystemMessage {
   type: 'info' | 'warning' | 'override'
 }
 
-// Shared YouTube-audio player. The host grants playback control to a player
-// (or themselves). Playback is synced across clients via a position anchor:
-// current position = status === 'playing'
+// Shared YouTube player. Playback is decoupled: each client runs its own player
+// (so ads / Premium are handled per viewer). The controller broadcasts the
+// current track and publishes their own live position; other clients seek to it
+// on demand via "Sync to host". The position fields describe the controller's
+// playback: current = status === 'playing'
 //   ? positionMs + (Date.now() - anchorTime)
 //   : positionMs
 export interface RoomMedia {
-  videoId: string | null         // loaded YouTube video, null when nothing is queued
+  videoId: string | null         // queued YouTube video, null when nothing is set
   title: string                  // display label for the current track
-  controllerId: string           // uid allowed to drive playback
-  status: 'playing' | 'paused'
-  positionMs: number             // playback position sampled at anchorTime
+  controllerId: string           // uid that broadcasts the track / sync target
+  status: 'playing' | 'paused'   // the controller's playback state
+  positionMs: number             // controller's position sampled at anchorTime
   anchorTime: number             // ms timestamp the position was sampled
+}
+
+export interface ChatMessage {
+  id: string
+  uid: string
+  name: string
+  text: string
+  createdAt: number
 }
 
 export interface Room {
@@ -131,6 +141,7 @@ export interface Room {
   finalRound: FinalRoundState | null
   media: RoomMedia | null
   messages: SystemMessage[]
+  chat: ChatMessage[]
   createdAt: number
   expiresAt: number
 }
