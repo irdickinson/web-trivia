@@ -9,6 +9,11 @@ import {
   stopMedia,
   grantMediaControl,
   setMediaTitle,
+  enqueueMedia,
+  removeFromQueue,
+  moveQueueItem,
+  playQueueItem,
+  playNext,
 } from '../../lib/media'
 
 interface Props {
@@ -42,6 +47,11 @@ export function MediaPlayer({ room, user, audio }: Props) {
   const [localPlaying, setLocalPlaying] = useState(false)
   const [urlInput, setUrlInput] = useState('')
   const [inputError, setInputError] = useState('')
+  const [queueInput, setQueueInput] = useState('')
+  const [queueError, setQueueError] = useState('')
+
+  const queue = media?.queue ?? []
+  const myName = room.players[user.uid]?.name ?? 'Player'
 
   // ── Duck the procedural music while THIS client is playing the video ─────────
   useEffect(() => {
@@ -70,6 +80,9 @@ export function MediaPlayer({ room, user, audio }: Props) {
                 void publishMediaPosition(roomRef.current, (p?.getCurrentTime() ?? 0) * 1000, 'playing')
               } else if (e.data === window.YT?.PlayerState.PAUSED) {
                 void publishMediaPosition(roomRef.current, (p?.getCurrentTime() ?? 0) * 1000, 'paused')
+              } else if (e.data === window.YT?.PlayerState.ENDED) {
+                // Autoplay the next queued video (or stop if the queue is empty).
+                void playNext(roomRef.current)
               }
             }
           },
@@ -100,8 +113,15 @@ export function MediaPlayer({ room, user, audio }: Props) {
     if (loadedIdRef.current !== media.videoId) {
       loadedIdRef.current = media.videoId
       const startSec = currentMediaPositionMs(media) / 1000
-      // Cue (paused) — each viewer presses play themselves so their own ads run.
-      try { p.cueVideoById({ videoId: media.videoId, startSeconds: startSec }) } catch { /* ignore */ }
+      // The controller auto-plays an advancing track (autoplay-next); everyone
+      // else cues paused so their own ads / Premium are handled per viewer.
+      try {
+        if (canControl && media.status === 'playing') {
+          p.loadVideoById({ videoId: media.videoId, startSeconds: startSec })
+        } else {
+          p.cueVideoById({ videoId: media.videoId, startSeconds: startSec })
+        }
+      } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, media?.videoId, media?.positionMs, media?.anchorTime])
@@ -145,6 +165,17 @@ export function MediaPlayer({ room, user, audio }: Props) {
     setUrlInput('')
     setCollapsed(false)
     void loadMediaVideo(room, id, id)
+  }
+
+  function handleEnqueue() {
+    setQueueError('')
+    const id = extractVideoId(queueInput)
+    if (!id) {
+      setQueueError('Enter a valid YouTube link or video ID.')
+      return
+    }
+    setQueueInput('')
+    void enqueueMedia(room, id, queueInput.trim(), user.uid, myName)
   }
 
   function handleSyncToHost() {
@@ -225,6 +256,55 @@ export function MediaPlayer({ room, user, audio }: Props) {
           )}
         </>
       )}
+
+      {/* Queue — anyone can add; the controller/host manages order + playback */}
+      <div className="media-queue stack" style={{ gap: '0.4rem' }}>
+        <div className="row between" style={{ alignItems: 'center' }}>
+          <span className="chip-label">Up next{queue.length > 0 ? ` · ${queue.length}` : ''}</span>
+          {canControl && queue.length > 0 && (
+            <button
+              className="secondary mini-btn"
+              onClick={() => void playNext(room)}
+              title="Skip to next"
+            >
+              ⏭ Next
+            </button>
+          )}
+        </div>
+
+        {queue.length === 0 ? (
+          <p className="muted" style={{ fontSize: '0.8rem', margin: 0 }}>Queue is empty.</p>
+        ) : (
+          <ul className="queue-list">
+            {queue.map((item, i) => (
+              <li key={item.id} className="queue-item">
+                <span className="queue-title" title={item.title}>{item.title}</span>
+                <span className="queue-by muted">{item.addedByName}</span>
+                {canControl && (
+                  <span className="queue-actions row" style={{ gap: '0.2rem' }}>
+                    <button className="icon-btn" onClick={() => void moveQueueItem(room, item.id, -1)} disabled={i === 0} title="Move up">▲</button>
+                    <button className="icon-btn" onClick={() => void moveQueueItem(room, item.id, 1)} disabled={i === queue.length - 1} title="Move down">▼</button>
+                    <button className="icon-btn" onClick={() => void playQueueItem(room, item.id)} title="Play now">▶</button>
+                    <button className="icon-btn" onClick={() => void removeFromQueue(room, item.id)} title="Remove">✕</button>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="row gap" style={{ gap: '0.4rem' }}>
+          <input
+            value={queueInput}
+            onChange={(e) => setQueueInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleEnqueue() }}
+            placeholder="Add a YouTube link to the queue"
+            style={{ flex: 1, fontSize: '0.84rem', padding: '0.5rem 0.6rem' }}
+          />
+          <button className="secondary mini-btn" onClick={handleEnqueue}>+ Queue</button>
+        </div>
+        {queueError && <p className="error" style={{ fontSize: '0.8rem' }}>{queueError}</p>}
+      </div>
 
       {/* Host grants control */}
       {isHost && (

@@ -1,15 +1,18 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useRoom } from '../hooks/useRoom'
+import { useAudio } from '../hooks/useAudio'
 import { leaveRoom } from '../lib/rooms'
-import { startGame } from '../lib/game'
+import { startGame, startRoundGame } from '../lib/game'
 import { recordGameResult } from '../lib/stats'
 import { resolvePacks } from '../data/packs'
 import { LoadingScreen } from '../components/ui/LoadingScreen'
 import { JeopardyGame } from '../components/game/JeopardyGame'
+import { RoundGame } from '../components/game/RoundGame'
 import { GameFinished } from '../components/game/GameFinished'
 import { ChatPanel } from '../components/game/ChatPanel'
+import { MediaPlayer } from '../components/game/MediaPlayer'
 import { BackdropOrb } from '../components/ui/BackdropOrb'
 import { PageMeta } from '../components/seo/PageMeta'
 
@@ -18,6 +21,8 @@ export default function Room() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { room, loading, notFound } = useRoom(code)
+  const audio = useAudio()
+  const [waitTab, setWaitTab] = useState<'chat' | 'media'>('chat')
 
   // Record the result once per finished game (guarded against snapshot churn
   // and refreshes; the stats write itself is also idempotent per game).
@@ -55,7 +60,11 @@ export default function Room() {
     room.phase === 'final-wager' || room.phase === 'final-answer' ||
     room.phase === 'final-results'
   ) {
-    return <JeopardyGame room={room} user={user} pack={pack} />
+    return <JeopardyGame room={room} user={user} pack={pack} onLeaveGame={handleLeaveGame} />
+  }
+
+  if (room.phase === 'round-question' || room.phase === 'round-reveal') {
+    return <RoundGame room={room} user={user} pack={pack} onLeaveGame={handleLeaveGame} />
   }
 
   if (room.phase === 'finished') {
@@ -70,12 +79,22 @@ export default function Room() {
 
   async function handleStart() {
     if (!isHost || !room) return
-    await startGame(room, pack)
+    if (room.settings.mode === 'rounds') {
+      await startRoundGame(room, pack)
+    } else {
+      await startGame(room, pack)
+    }
   }
 
   async function handleLeave() {
     if (!code) return
     try { await leaveRoom(code, user!.uid) } finally { navigate('/lobby') }
+  }
+
+  // Used by non-host players to exit a running game back to their home menu.
+  async function handleLeaveGame() {
+    if (!code) return
+    try { await leaveRoom(code, user!.uid) } finally { navigate('/') }
   }
 
   const MODE_LABELS: Record<string, string> = {
@@ -89,7 +108,7 @@ export default function Room() {
     <main className="page center">
       <BackdropOrb />
       <PageMeta title="Game Room" description="Waiting for the host to start the game." />
-      <div className="stack" style={{ width: 'min(560px, 94vw)' }}>
+      <div className="stack" style={{ width: 'min(620px, 94vw)' }}>
       <div className="panel elevated-panel stack" style={{ padding: '1.5rem' }}>
 
         <div className="topbar">
@@ -144,7 +163,32 @@ export default function Room() {
         )}
       </div>
 
-      <ChatPanel room={room} user={user} />
+      <div className="rail-tabs" role="tablist">
+        <button
+          role="tab"
+          className={`rail-tab${waitTab === 'chat' ? ' active' : ''}`}
+          aria-selected={waitTab === 'chat'}
+          onClick={() => setWaitTab('chat')}
+        >
+          Chat
+        </button>
+        <button
+          role="tab"
+          className={`rail-tab${waitTab === 'media' ? ' active' : ''}`}
+          aria-selected={waitTab === 'media'}
+          onClick={() => setWaitTab('media')}
+        >
+          Media
+        </button>
+      </div>
+
+      {/* Both panes stay mounted so the media player keeps playing across tabs. */}
+      <div hidden={waitTab !== 'chat'}>
+        <ChatPanel room={room} user={user} />
+      </div>
+      <div hidden={waitTab !== 'media'}>
+        <MediaPlayer room={room} user={user} audio={audio} />
+      </div>
       </div>
     </main>
   )

@@ -5,6 +5,7 @@ import { useAuthModal } from '../context/AuthModalContext'
 import { LoadingScreen } from '../components/ui/LoadingScreen'
 import { getAuthErrorMessage } from '../utils/authErrors'
 import { PageMeta } from '../components/seo/PageMeta'
+import { GameSetup } from '../components/lobby/GameSetup'
 
 const FEATURES = [
   { icon: '⚡', title: 'Buzz In', desc: 'Race to buzz first and claim the right to answer.' },
@@ -43,7 +44,7 @@ export default function Home() {
     }
   }
 
-  // Authenticated dashboard
+  // Authenticated hub — create/join a game directly here.
   if (user && !isAnonymous) {
     return (
       <main className="page dashboard-page">
@@ -52,15 +53,8 @@ export default function Home() {
           <div className="eyebrow">Welcome back</div>
           <h1 className="dashboard-username">{user.displayName ?? 'Player'}</h1>
         </div>
-        <div className="dashboard-cards">
-          <div className="panel elevated-panel dashboard-card">
-            <span className="eyebrow">Ready to play?</span>
-            <h2 className="dashboard-card-title">Jump into a game</h2>
-            <p className="dashboard-card-sub">
-              Create a room and invite friends, or join an existing game with a code.
-            </p>
-            <button className="btn-lg" onClick={() => navigate('/lobby')}>Go to Lobby</button>
-          </div>
+        <div style={{ maxWidth: '980px', margin: '0 auto', width: '100%' }} className="stack">
+          <GameSetup />
         </div>
         <div className="features-row">
           {FEATURES.map((f) => (

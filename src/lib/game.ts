@@ -13,6 +13,8 @@ import {
   SystemMessage,
   BoardMap,
   FinalPlayerEntry,
+  RoundState,
+  RoundQuestion,
 } from '../types/game'
 import { QuestionPack, BoardQuestion } from '../types/question'
 import { matchAnswer, normalizeAnswer } from './fuzzy'
@@ -108,6 +110,21 @@ export function buildBoard(
   return board
 }
 
+// Pick 3 distractors from a candidate answer list and shuffle them with the
+// correct answer into four options. Seeded so options are stable across clients.
+// Returns null when there aren't enough distinct distractors.
+function buildOptions(
+  correctDisplay: string,
+  candidates: string[],
+  seed: string,
+): [string, string, string, string] | null {
+  const rng = makeRng(seed)
+  const pool = seededShuffle(candidates, rng).filter((a) => a && a !== correctDisplay)
+  const distractors = [...new Set(pool)].slice(0, 3)
+  if (distractors.length < 3) return null
+  return seededShuffle([correctDisplay, ...distractors], rng) as [string, string, string, string]
+}
+
 // Build distractors for multiple-choice mode from sibling questions on the
 // board. Seeded per clue so the options are stable across clients.
 function buildMCOptions(
@@ -115,21 +132,11 @@ function buildMCOptions(
   board: BoardMap,
   seed: string,
 ): [string, string, string, string] | null {
-  const rng = makeRng(`${seed}:mc:${correct.id}`)
-  const correctDisplay = correct.acceptedAnswers[0] ?? ''
-
-  // Gather candidates from the same category (or whole board if insufficient)
-  const siblings = Object.values(board).filter(
-    (q) => q.id !== correct.id && q.acceptedAnswers.length > 0,
-  )
-
-  const pool = seededShuffle(siblings, rng).map((q) => q.acceptedAnswers[0]).filter(Boolean)
-  const distractors = [...new Set(pool)].slice(0, 3)
-
-  if (distractors.length < 3) return null
-
-  const opts = seededShuffle([correctDisplay, ...distractors], rng) as [string, string, string, string]
-  return opts
+  const candidates = Object.values(board)
+    .filter((q) => q.id !== correct.id)
+    .map((q) => q.acceptedAnswers[0])
+    .filter(Boolean)
+  return buildOptions(correct.acceptedAnswers[0] ?? '', candidates, `${seed}:mc:${correct.id}`)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -789,9 +796,217 @@ export async function returnToLobby(roomCode: string): Promise<void> {
     board: {},
     clueState: null,
     finalRound: null,
+    roundState: null,
     media: null,
     messages: [],
     currentChooserId: null,
     chooserRotationIndex: 0,
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rounds mode
+// ─────────────────────────────────────────────────────────────────────────────
+
+function maxDifficulty(pack: QuestionPack): number {
+  return pack.questions.reduce((m, q) => Math.max(m, q.difficulty), 0)
+}
+
+// Categories chosen for the game — seeded so every round uses the same set.
+function roundCategories(pack: QuestionPack, settings: GameSettings, seed: string): string[] {
+  return seededShuffle(uniqueCategories(pack), makeRng(seed)).slice(0, settings.categoryCount)
+}
+
+// Build one round: difficulty = roundIndex + 1, so later rounds are harder and
+// (points = difficulty value) worth more. Each question is typed or MC based on
+// a seeded coin flip against settings.mcRatio.
+export function buildRound(
+  pack: QuestionPack,
+  settings: GameSettings,
+  seed: string,
+  roundIndex: number,
+): RoundQuestion[] {
+  const difficulty = roundIndex + 1
+  const categories = roundCategories(pack, settings, seed)
+
+  let pool = pack.questions.filter(
+    (q) => q.difficulty === difficulty && categories.includes(q.category),
+  )
+  if (pool.length === 0) {
+    pool = pack.questions.filter((q) => categories.includes(q.category))
+  }
+
+  const picks = seededShuffle(pool, makeRng(`${seed}:round:${roundIndex}`)).slice(
+    0,
+    settings.questionsPerRound,
+  )
+
+  return picks.map((q, i) => {
+    const wantMC = makeRng(`${seed}:mc-flip:${roundIndex}:${i}:${q.id}`).next() < settings.mcRatio
+    const correctDisplay = q.acceptedAnswers[0] ?? ''
+    const distractors = pack.questions
+      .filter((d) => d.id !== q.id && categories.includes(d.category))
+      .map((d) => d.acceptedAnswers[0])
+      .filter(Boolean)
+    const options = wantMC
+      ? buildOptions(correctDisplay, distractors, `${seed}:round-mc:${q.id}`)
+      : null
+    return {
+      questionId: q.id,
+      category: q.category,
+      clue: q.clue,
+      correctAnswers: q.acceptedAnswers.map((a) => normalizeAnswer(a)),
+      difficulty: q.difficulty,
+      points: q.value,
+      isMultipleChoice: !!options, // falls back to typed if distractors are short
+      options,
+    }
+  })
+}
+
+export async function startRoundGame(room: Room, pack: QuestionPack): Promise<void> {
+  const settings = room.settings
+  const roundsCount = Math.min(settings.roundsCount, Math.max(1, maxDifficulty(pack)))
+  const questions = buildRound(pack, settings, settings.seed, 0)
+  if (questions.length === 0) return
+
+  const roundState: RoundState = {
+    roundIndex: 0,
+    roundsCount,
+    questionsPerRound: settings.questionsPerRound,
+    status: 'answering',
+    questionIndex: 0,
+    questionDeadline: Date.now() + settings.answerTimeSeconds * 1000,
+    revealIndex: 0,
+    appliedReveal: 0,
+    questions,
+    answers: {},
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updates: Record<string, any> = {
+    phase: 'round-question',
+    roundState,
+    clueState: null,
+    finalRound: null,
+    messages: [makeMessage(`Round 1 begins! ${questions.length} question${questions.length === 1 ? '' : 's'} worth $${questions[0]?.points ?? 0} each.`)],
+  }
+  // Fresh game — reset everyone to zero.
+  for (const pid of Object.keys(room.players)) updates[`players.${pid}.score`] = 0
+
+  await updateDoc(doc(db, 'rooms', room.code), updates)
+}
+
+export async function submitRoundAnswer(room: Room, uid: string, answer: string): Promise<void> {
+  const rs = room.roundState
+  if (!rs || rs.status !== 'answering') return
+  const q = rs.questions[rs.questionIndex]
+  if (!q) return
+  await updateDoc(doc(db, 'rooms', room.code), {
+    [`roundState.answers.${q.questionId}.${uid}`]: answer,
+  })
+}
+
+// Host: move to the next question, or into the reveal once the round is answered.
+export async function advanceRoundQuestion(room: Room): Promise<void> {
+  const rs = room.roundState
+  if (!rs || rs.status !== 'answering') return
+
+  if (rs.questionIndex < rs.questions.length - 1) {
+    await updateDoc(doc(db, 'rooms', room.code), {
+      'roundState.questionIndex': rs.questionIndex + 1,
+      'roundState.questionDeadline': Date.now() + room.settings.answerTimeSeconds * 1000,
+    })
+    return
+  }
+
+  // Round answered — enter the reveal and score the first question immediately
+  // so the scoreboard starts ticking.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updates: Record<string, any> = {
+    phase: 'round-reveal',
+    'roundState.status': 'revealing',
+    'roundState.questionDeadline': null,
+    'roundState.revealIndex': 0,
+    'roundState.appliedReveal': 1,
+  }
+  scoreRoundQuestion(room, rs, 0, updates)
+  await updateDoc(doc(db, 'rooms', room.code), updates)
+}
+
+// Adds this question's score increments + a summary message to `updates`.
+function scoreRoundQuestion(
+  room: Room,
+  rs: RoundState,
+  index: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  updates: Record<string, any>,
+): void {
+  const q = rs.questions[index]
+  if (!q) return
+  const opts = matchOptions(room)
+  const ansMap = rs.answers[q.questionId] ?? {}
+  const winners: string[] = []
+  for (const [uid, ans] of Object.entries(ansMap)) {
+    if (matchAnswer(ans, q.correctAnswers, opts).matched) {
+      updates[`players.${uid}.score`] = (room.players[uid]?.score ?? 0) + q.points
+      winners.push(room.players[uid]?.name ?? uid)
+    }
+  }
+  updates.messages = arrayUnion(
+    makeMessage(
+      winners.length
+        ? `${q.category}: ${winners.join(', ')} scored +$${q.points}.`
+        : `${q.category}: nobody got it. Answer: ${q.correctAnswers[0] ?? ''}`,
+      winners.length ? 'info' : 'warning',
+    ),
+  )
+}
+
+// Host: reveal (and score) the next question in the round.
+export async function advanceReveal(room: Room): Promise<void> {
+  const rs = room.roundState
+  if (!rs || rs.status !== 'revealing') return
+  const next = rs.appliedReveal
+  if (next >= rs.questions.length) return
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updates: Record<string, any> = {
+    'roundState.revealIndex': next,
+    'roundState.appliedReveal': next + 1,
+  }
+  scoreRoundQuestion(room, rs, next, updates)
+  await updateDoc(doc(db, 'rooms', room.code), updates)
+}
+
+// Host: start the next round, or finish the game when rounds are exhausted.
+export async function nextRound(room: Room, pack: QuestionPack): Promise<void> {
+  const rs = room.roundState
+  if (!rs) return
+  const nextIndex = rs.roundIndex + 1
+  if (nextIndex >= rs.roundsCount) {
+    await finishGame(room.code)
+    return
+  }
+
+  const questions = buildRound(pack, room.settings, room.settings.seed, nextIndex)
+  if (questions.length === 0) {
+    await finishGame(room.code)
+    return
+  }
+
+  await updateDoc(doc(db, 'rooms', room.code), {
+    phase: 'round-question',
+    'roundState.roundIndex': nextIndex,
+    'roundState.status': 'answering',
+    'roundState.questionIndex': 0,
+    'roundState.questionDeadline': Date.now() + room.settings.answerTimeSeconds * 1000,
+    'roundState.revealIndex': 0,
+    'roundState.appliedReveal': 0,
+    'roundState.questions': questions,
+    'roundState.answers': {},
+    messages: arrayUnion(
+      makeMessage(`Round ${nextIndex + 1} begins! Questions are worth $${questions[0]?.points ?? 0} each.`),
+    ),
   })
 }

@@ -28,9 +28,6 @@ export function SiteHeader() {
         <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
           Home
         </NavLink>
-        <NavLink to="/lobby" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          Play
-        </NavLink>
         <NavLink to="/leaderboards" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
           Leaderboards
         </NavLink>
