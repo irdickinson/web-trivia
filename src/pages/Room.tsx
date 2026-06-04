@@ -28,7 +28,11 @@ export default function Room() {
   // and refreshes; the stats write itself is also idempotent per game).
   const recordedRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!room || !user || room.phase !== 'finished') return
+    if (!room || !user) return
+    // Jeopardy/classic end on the 'finished' phase; rounds mode ends on the
+    // cinematic final standings (phase stays 'round-question').
+    const ended = room.phase === 'finished' || room.roundState?.status === 'final'
+    if (!ended) return
     const key = `${room.code}-${room.createdAt}`
     if (recordedRef.current === key) return
     recordedRef.current = key
@@ -63,7 +67,7 @@ export default function Room() {
     return <JeopardyGame room={room} user={user} pack={pack} onLeaveGame={handleLeaveGame} />
   }
 
-  if (room.phase === 'round-question' || room.phase === 'round-reveal') {
+  if (room.phase === 'round-question') {
     return <RoundGame room={room} user={user} pack={pack} onLeaveGame={handleLeaveGame} />
   }
 

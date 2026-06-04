@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { User } from 'firebase/auth'
 import { Room } from '../../types/game'
 import { matchAnswer } from '../../lib/fuzzy'
@@ -9,16 +9,24 @@ interface Props {
   user: User
   isHost: boolean
   audio: ReturnType<typeof useAudio>
-  onAdvanceReveal: () => void
-  onNextRound: () => void
+  onAdvance: () => void   // host / timer: next question or round summary
 }
 
-// Per-question results reveal between rounds: the host steps through the round's
-// questions one at a time so everyone watches the scores build up. Scores are
-// applied server-side as each question is revealed (see advanceReveal).
-export function RoundReveal({ room, user, isHost, audio, onAdvanceReveal, onNextRound }: Props) {
+function useCountdown(deadline: number | null | undefined): number {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 100)
+    return () => clearInterval(id)
+  }, [])
+  if (!deadline) return 0
+  return Math.max(0, deadline - now)
+}
+
+// The inline ~5s result beat after a question closes: shows who got it right and
+// the running totals, then auto-advances. The round does not fully stop here.
+export function RoundQuestionResult({ room, user, isHost, audio, onAdvance }: Props) {
   const rs = room.roundState!
-  const q = rs.questions[rs.revealIndex]
+  const q = rs.questions[rs.questionIndex]
 
   const opts = {
     typoTolerance: room.settings.typoTolerance,
@@ -26,10 +34,10 @@ export function RoundReveal({ room, user, isHost, audio, onAdvanceReveal, onNext
     caseInsensitive: true,
   }
 
-  const moreToReveal = rs.appliedReveal < rs.questions.length
-  const isLastRound = rs.roundIndex >= rs.roundsCount - 1
+  const isLastQuestion = rs.questionIndex >= rs.questions.length - 1
+  const msLeft = useCountdown(rs.resultDeadline)
 
-  // SFX for my own result as each question is revealed.
+  // SFX for my own result, once per revealed question.
   useEffect(() => {
     if (!q) return
     const mine = rs.answers[q.questionId]?.[user.uid]
@@ -37,28 +45,41 @@ export function RoundReveal({ room, user, isHost, audio, onAdvanceReveal, onNext
     const correct = matchAnswer(mine, q.correctAnswers, opts).matched
     audio.playSfx(correct ? 'correct' : 'incorrect')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rs.revealIndex])
+  }, [rs.questionIndex])
 
-  // Players are ordered by score so the standings read like a leaderboard.
-  const players = Object.values(room.players).sort((a, b) => b.score - a.score)
-  const ansMap = q ? rs.answers[q.questionId] ?? {} : {}
-
-  const advanceRef = useRef(onAdvanceReveal)
-  advanceRef.current = onAdvanceReveal
+  // Host auto-advances once the beat's deadline passes.
+  const onAdvanceRef = useRef(onAdvance)
+  onAdvanceRef.current = onAdvance
+  const advancedRef = useRef(false)
+  useEffect(() => { advancedRef.current = false }, [rs.questionIndex])
+  useEffect(() => {
+    if (!isHost) return
+    const id = setInterval(() => {
+      if (advancedRef.current) return
+      if (rs.resultDeadline != null && Date.now() > rs.resultDeadline) {
+        advancedRef.current = true
+        onAdvanceRef.current()
+      }
+    }, 200)
+    return () => clearInterval(id)
+  }, [isHost, rs.resultDeadline])
 
   if (!q) return null
+
+  const players = Object.values(room.players).sort((a, b) => b.score - a.score)
+  const ansMap = rs.answers[q.questionId] ?? {}
 
   return (
     <div className="round-stage panel elevated-panel stack">
       <div className="round-topline">
         <span className="eyebrow" style={{ marginBottom: 0 }}>
-          Round {rs.roundIndex + 1} results
+          Round {rs.roundIndex + 1} · result
         </span>
         <span className="muted" style={{ fontSize: '0.85rem' }}>
           {q.category} · ${q.points}
         </span>
         <span className="muted" style={{ fontSize: '0.85rem' }}>
-          {rs.revealIndex + 1} of {rs.questions.length}
+          {rs.questionIndex + 1} of {rs.questions.length}
         </span>
       </div>
 
@@ -87,18 +108,13 @@ export function RoundReveal({ room, user, isHost, audio, onAdvanceReveal, onNext
       </ul>
 
       <div className="round-footline">
-        {isHost ? (
-          moreToReveal ? (
-            <button className="btn-lg" onClick={onAdvanceReveal}>Reveal next →</button>
-          ) : (
-            <button className="btn-lg" onClick={onNextRound}>
-              {isLastRound ? 'See final scores' : `Start round ${rs.roundIndex + 2} →`}
-            </button>
-          )
-        ) : (
-          <span className="muted" style={{ fontSize: '0.88rem' }}>
-            {moreToReveal ? 'Revealing results…' : 'Waiting for the host…'}
-          </span>
+        <span className="muted" style={{ fontSize: '0.82rem' }}>
+          {isLastQuestion ? 'Round summary' : 'Next question'} in {Math.ceil(msLeft / 1000)}s…
+        </span>
+        {isHost && (
+          <button className="secondary mini-btn" onClick={onAdvance}>
+            {isLastQuestion ? 'Round summary →' : 'Next →'}
+          </button>
         )}
       </div>
     </div>

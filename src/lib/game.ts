@@ -18,7 +18,7 @@ import {
 } from '../types/game'
 import { QuestionPack, BoardQuestion } from '../types/question'
 import { matchAnswer, normalizeAnswer } from './fuzzy'
-import { makeRng, seededShuffle } from './rng'
+import { makeRng, seededShuffle, randomSeed } from './rng'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -818,15 +818,17 @@ function roundCategories(pack: QuestionPack, settings: GameSettings, seed: strin
 }
 
 // Build one round: difficulty = roundIndex + 1, so later rounds are harder and
-// (points = difficulty value) worth more. Each question is typed or MC based on
-// a seeded coin flip against settings.mcRatio.
+// (points = difficulty value) worth more. The final round ignores roundIndex and
+// pulls the top difficulty tier so every clue is a hard one. Each question is
+// typed or MC based on a seeded coin flip against settings.mcRatio.
 export function buildRound(
   pack: QuestionPack,
   settings: GameSettings,
   seed: string,
   roundIndex: number,
+  isFinal = false,
 ): RoundQuestion[] {
-  const difficulty = roundIndex + 1
+  const difficulty = isFinal ? maxDifficulty(pack) : roundIndex + 1
   const categories = roundCategories(pack, settings, seed)
 
   let pool = pack.questions.filter(
@@ -864,23 +866,41 @@ export function buildRound(
   })
 }
 
+// How long the inline per-question result stays up before auto-advancing.
+const RESULT_BEAT_MS = 5000
+
+function snapshotScores(room: Room): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const pid of Object.keys(room.players)) out[pid] = room.players[pid]?.score ?? 0
+  return out
+}
+
+// Fresh game → the ready-up screen for round 1. Scores reset to zero; the host
+// starts the questions from the intro (ready toggles are a cosmetic signal).
 export async function startRoundGame(room: Room, pack: QuestionPack): Promise<void> {
   const settings = room.settings
   const roundsCount = Math.min(settings.roundsCount, Math.max(1, maxDifficulty(pack)))
-  const questions = buildRound(pack, settings, settings.seed, 0)
+  const isFinalRound = roundsCount === 1
+  // A restart ("Start new game" off the final screen) rerolls the seed so the
+  // questions differ; the very first start honours the host's chosen seed.
+  const seed = room.roundState ? randomSeed() : settings.seed
+  const questions = buildRound(pack, settings, seed, 0, isFinalRound)
   if (questions.length === 0) return
 
   const roundState: RoundState = {
     roundIndex: 0,
     roundsCount,
     questionsPerRound: settings.questionsPerRound,
-    status: 'answering',
+    status: 'intro',
     questionIndex: 0,
-    questionDeadline: Date.now() + settings.answerTimeSeconds * 1000,
-    revealIndex: 0,
-    appliedReveal: 0,
+    questionDeadline: null,
+    resultDeadline: null,
+    scoredCount: 0,
+    isFinalRound,
     questions,
     answers: {},
+    ready: {},
+    roundStartScores: {},
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -889,12 +909,22 @@ export async function startRoundGame(room: Room, pack: QuestionPack): Promise<vo
     roundState,
     clueState: null,
     finalRound: null,
-    messages: [makeMessage(`Round 1 begins! ${questions.length} question${questions.length === 1 ? '' : 's'} worth $${questions[0]?.points ?? 0} each.`)],
+    'settings.seed': seed,
+    messages: [makeMessage('Get ready — round 1 is about to begin.')],
   }
   // Fresh game — reset everyone to zero.
   for (const pid of Object.keys(room.players)) updates[`players.${pid}.score`] = 0
 
   await updateDoc(doc(db, 'rooms', room.code), updates)
+}
+
+// Any player: flip their own ready flag on an intro / summary ready-up screen.
+export async function toggleReady(room: Room, uid: string): Promise<void> {
+  const rs = room.roundState
+  if (!rs || (rs.status !== 'intro' && rs.status !== 'summary')) return
+  await updateDoc(doc(db, 'rooms', room.code), {
+    [`roundState.ready.${uid}`]: !rs.ready?.[uid],
+  })
 }
 
 export async function submitRoundAnswer(room: Room, uid: string, answer: string): Promise<void> {
@@ -907,30 +937,37 @@ export async function submitRoundAnswer(room: Room, uid: string, answer: string)
   })
 }
 
-// Host: move to the next question, or into the reveal once the round is answered.
-export async function advanceRoundQuestion(room: Room): Promise<void> {
+// Host: leave the ready-up and begin this round's questions. Snapshots the
+// current scores so the end-of-round summary can show per-round deltas.
+export async function startRoundQuestions(room: Room): Promise<void> {
+  const rs = room.roundState
+  if (!rs || rs.status !== 'intro') return
+  await updateDoc(doc(db, 'rooms', room.code), {
+    'roundState.status': 'answering',
+    'roundState.questionIndex': 0,
+    'roundState.questionDeadline': Date.now() + room.settings.answerTimeSeconds * 1000,
+    'roundState.resultDeadline': null,
+    'roundState.scoredCount': 0,
+    'roundState.roundStartScores': snapshotScores(room),
+    messages: arrayUnion(
+      makeMessage(`Round ${rs.roundIndex + 1} begins! Questions are worth $${rs.questions[0]?.points ?? 0} each.`),
+    ),
+  })
+}
+
+// Host: the live question is over (timer expired or everyone answered). Score it
+// and show the inline result beat before auto-advancing.
+export async function resolveRoundQuestion(room: Room): Promise<void> {
   const rs = room.roundState
   if (!rs || rs.status !== 'answering') return
-
-  if (rs.questionIndex < rs.questions.length - 1) {
-    await updateDoc(doc(db, 'rooms', room.code), {
-      'roundState.questionIndex': rs.questionIndex + 1,
-      'roundState.questionDeadline': Date.now() + room.settings.answerTimeSeconds * 1000,
-    })
-    return
-  }
-
-  // Round answered — enter the reveal and score the first question immediately
-  // so the scoreboard starts ticking.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updates: Record<string, any> = {
-    phase: 'round-reveal',
-    'roundState.status': 'revealing',
+    'roundState.status': 'question-result',
     'roundState.questionDeadline': null,
-    'roundState.revealIndex': 0,
-    'roundState.appliedReveal': 1,
+    'roundState.resultDeadline': Date.now() + RESULT_BEAT_MS,
+    'roundState.scoredCount': rs.questionIndex + 1,
   }
-  scoreRoundQuestion(room, rs, 0, updates)
+  scoreRoundQuestion(room, rs, rs.questionIndex, updates)
   await updateDoc(doc(db, 'rooms', room.code), updates)
 }
 
@@ -963,50 +1000,70 @@ function scoreRoundQuestion(
   )
 }
 
-// Host: reveal (and score) the next question in the round.
-export async function advanceReveal(room: Room): Promise<void> {
+// Host (or the auto-advance timer): leave the inline result beat — go to the next
+// question, or stop on the round summary after the last one.
+export async function advanceAfterResult(room: Room): Promise<void> {
   const rs = room.roundState
-  if (!rs || rs.status !== 'revealing') return
-  const next = rs.appliedReveal
-  if (next >= rs.questions.length) return
+  if (!rs || rs.status !== 'question-result') return
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updates: Record<string, any> = {
-    'roundState.revealIndex': next,
-    'roundState.appliedReveal': next + 1,
-  }
-  scoreRoundQuestion(room, rs, next, updates)
-  await updateDoc(doc(db, 'rooms', room.code), updates)
-}
-
-// Host: start the next round, or finish the game when rounds are exhausted.
-export async function nextRound(room: Room, pack: QuestionPack): Promise<void> {
-  const rs = room.roundState
-  if (!rs) return
-  const nextIndex = rs.roundIndex + 1
-  if (nextIndex >= rs.roundsCount) {
-    await finishGame(room.code)
-    return
-  }
-
-  const questions = buildRound(pack, room.settings, room.settings.seed, nextIndex)
-  if (questions.length === 0) {
-    await finishGame(room.code)
+  if (rs.questionIndex < rs.questions.length - 1) {
+    await updateDoc(doc(db, 'rooms', room.code), {
+      'roundState.status': 'answering',
+      'roundState.questionIndex': rs.questionIndex + 1,
+      'roundState.questionDeadline': Date.now() + room.settings.answerTimeSeconds * 1000,
+      'roundState.resultDeadline': null,
+    })
     return
   }
 
   await updateDoc(doc(db, 'rooms', room.code), {
-    phase: 'round-question',
+    'roundState.status': 'summary',
+    'roundState.resultDeadline': null,
+  })
+}
+
+// Host: from the round summary, build and start the next round's questions. The
+// summary screen itself is the ready-up, so this goes straight into answering.
+export async function nextRound(room: Room, pack: QuestionPack): Promise<void> {
+  const rs = room.roundState
+  if (!rs || rs.status !== 'summary' || rs.isFinalRound) return
+  const nextIndex = rs.roundIndex + 1
+  const isFinalRound = nextIndex >= rs.roundsCount - 1
+
+  const questions = buildRound(pack, room.settings, room.settings.seed, nextIndex, isFinalRound)
+  if (questions.length === 0) {
+    await showFinalResults(room)
+    return
+  }
+
+  await updateDoc(doc(db, 'rooms', room.code), {
     'roundState.roundIndex': nextIndex,
     'roundState.status': 'answering',
     'roundState.questionIndex': 0,
     'roundState.questionDeadline': Date.now() + room.settings.answerTimeSeconds * 1000,
-    'roundState.revealIndex': 0,
-    'roundState.appliedReveal': 0,
+    'roundState.resultDeadline': null,
+    'roundState.scoredCount': 0,
+    'roundState.isFinalRound': isFinalRound,
     'roundState.questions': questions,
     'roundState.answers': {},
+    'roundState.ready': {},
+    'roundState.roundStartScores': snapshotScores(room),
     messages: arrayUnion(
-      makeMessage(`Round ${nextIndex + 1} begins! Questions are worth $${questions[0]?.points ?? 0} each.`),
+      makeMessage(
+        isFinalRound
+          ? `Final round! All hardest questions, worth $${questions[0]?.points ?? 0} each.`
+          : `Round ${nextIndex + 1} begins! Questions are worth $${questions[0]?.points ?? 0} each.`,
+      ),
     ),
+  })
+}
+
+// Host: from the final round's summary, roll the cinematic final standings.
+export async function showFinalResults(room: Room): Promise<void> {
+  const rs = room.roundState
+  if (!rs) return
+  await updateDoc(doc(db, 'rooms', room.code), {
+    'roundState.status': 'final',
+    'roundState.resultDeadline': null,
   })
 }

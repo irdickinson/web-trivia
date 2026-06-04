@@ -10,8 +10,7 @@ export type LobbyPhase =
   | 'final-wager'
   | 'final-answer'
   | 'final-results'
-  | 'round-question'   // rounds mode: a question is live, everyone answering
-  | 'round-reveal'     // rounds mode: per-question results reveal between rounds
+  | 'round-question'   // rounds mode: umbrella phase — sub-screen driven by RoundState.status
   | 'finished'
 
 // revealing  — question is animating / buzz window open (jeopardy mode)
@@ -121,18 +120,35 @@ export interface RoundQuestion {
   options?: [string, string, string, string] | null
 }
 
+// Drives which round-mode sub-screen is shown (all under the 'round-question' phase):
+//   intro            — ready-up before round 1
+//   answering        — a question is live, everyone answering
+//   question-result  — inline per-question result beat, then auto-advance
+//   summary          — full stop after the last question; totals + this round's
+//                      deltas; doubles as the ready-up for the next round
+//   final            — cinematic final standings reveal
+export type RoundStatus =
+  | 'intro'
+  | 'answering'
+  | 'question-result'
+  | 'summary'
+  | 'final'
+
 export interface RoundState {
   roundIndex: number                  // 0-based current round
   roundsCount: number
   questionsPerRound: number
-  status: 'answering' | 'revealing'
+  status: RoundStatus
   questionIndex: number               // which question is live during 'answering'
   questionDeadline: number | null     // ms timestamp the current question closes
-  revealIndex: number                 // which question's results are shown during 'revealing'
-  appliedReveal: number               // how many reveals have had scores applied (idempotency)
+  resultDeadline: number | null       // ms timestamp the inline result beat auto-advances
+  scoredCount: number                 // questions scored so far this round (idempotency)
+  isFinalRound: boolean               // true on the last round (all top-tier questions)
   questions: RoundQuestion[]          // the current round's questions
   // questionId → uid → submitted answer text
   answers: Record<string, Record<string, string>>
+  ready: Record<string, boolean>      // uid → ready (cosmetic signal; host starts)
+  roundStartScores: Record<string, number> // score per uid at this round's start (for deltas)
 }
 
 export interface SystemMessage {

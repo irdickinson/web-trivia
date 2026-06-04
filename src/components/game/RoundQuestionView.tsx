@@ -6,7 +6,7 @@ interface Props {
   room: Room
   user: User
   onSubmit: (answer: string) => void
-  onAdvance: () => void   // host: move to next question / into reveal
+  onResolve: () => void   // host: close the question and score it (timer / all answered / skip)
 }
 
 function useDeadlineMs(deadline: number | null | undefined): number {
@@ -22,7 +22,7 @@ function useDeadlineMs(deadline: number | null | undefined): number {
 // Simultaneous answering screen for rounds mode: everyone answers the same
 // question under a shared per-question timer. The host drives the advance when
 // the timer runs out or everyone has answered.
-export function RoundQuestionView({ room, user, onSubmit, onAdvance }: Props) {
+export function RoundQuestionView({ room, user, onSubmit, onResolve }: Props) {
   const rs = room.roundState!
   const isHost = user.uid === room.hostId
   const q = rs.questions[rs.questionIndex]
@@ -46,20 +46,20 @@ export function RoundQuestionView({ room, user, onSubmit, onAdvance }: Props) {
     if (inputRef.current) inputRef.current.focus()
   }, [rs.questionIndex, rs.roundIndex])
 
-  // Host drives the advance: on the deadline, or once everyone has answered.
-  const onAdvanceRef = useRef(onAdvance)
-  useEffect(() => { onAdvanceRef.current = onAdvance })
-  const advancedRef = useRef(false)
-  useEffect(() => { advancedRef.current = false }, [rs.questionIndex, rs.roundIndex])
+  // Host closes the question on the deadline, or once everyone has answered.
+  const onResolveRef = useRef(onResolve)
+  useEffect(() => { onResolveRef.current = onResolve })
+  const resolvedRef = useRef(false)
+  useEffect(() => { resolvedRef.current = false }, [rs.questionIndex, rs.roundIndex])
   useEffect(() => {
     if (!isHost) return
     const id = setInterval(() => {
-      if (advancedRef.current) return
+      if (resolvedRef.current) return
       const overdue = rs.questionDeadline != null && Date.now() > rs.questionDeadline
       const allAnswered = playerCount > 0 && answeredCount >= playerCount
       if (overdue || allAnswered) {
-        advancedRef.current = true
-        onAdvanceRef.current()
+        resolvedRef.current = true
+        onResolveRef.current()
       }
     }, 250)
     return () => clearInterval(id)
@@ -157,8 +157,8 @@ export function RoundQuestionView({ room, user, onSubmit, onAdvance }: Props) {
           {answeredCount} of {playerCount} answered
         </span>
         {isHost && (
-          <button className="secondary mini-btn" onClick={onAdvance}>
-            Skip ahead →
+          <button className="secondary mini-btn" onClick={onResolve}>
+            Reveal answer →
           </button>
         )}
       </div>

@@ -1016,6 +1016,118 @@ h1, h2, h3, p { margin: 0; }
 .reveal-points { font-family: monospace; font-weight: 800; color: var(--success); }
 .reveal-total { font-family: monospace; font-weight: 900; color: var(--gold); }
 
+/* Ready-up roster (round intro + summary) */
+.ready-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.ready-roster { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.ready-chip {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.4rem 0.7rem; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line);
+  font: inherit; font-weight: 700; color: var(--muted);
+  transition: border-color 0.2s, color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.ready-chip.me:not(:disabled) { cursor: pointer; }
+.ready-chip.me { border-color: rgba(var(--gold-rgb), 0.3); }
+.ready-chip:disabled { cursor: default; }
+.ready-chip .ready-dot {
+  width: 0.55rem; height: 0.55rem; border-radius: 50%;
+  background: var(--line-bright); transition: background 0.2s, box-shadow 0.2s;
+}
+.ready-chip.ready {
+  color: var(--text); background: rgba(143, 214, 166, 0.12);
+  border-color: var(--success);
+  box-shadow: 0 0 0 1px rgba(143, 214, 166, 0.25), 0 0 14px rgba(143, 214, 166, 0.12);
+}
+.ready-chip.ready .ready-dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+.ready-tag { font-size: 0.6rem; padding: 1px 5px; }
+
+/* Round intro */
+.round-intro-title { font-size: clamp(1.5rem, 3.4vw, 2.1rem); font-weight: 900; margin: 0; }
+.round-cat-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; }
+.cat-chip {
+  padding: 0.28rem 0.6rem; border-radius: 999px;
+  background: var(--gold-soft); border: 1px solid rgba(var(--gold-rgb), 0.28);
+  color: var(--gold); font-size: 0.78rem; font-weight: 700;
+}
+.final-badge {
+  align-self: center; padding: 0.25rem 0.8rem; border-radius: 999px;
+  background: rgba(var(--gold-rgb), 0.16); border: 1px solid rgba(var(--gold-rgb), 0.5);
+  color: var(--gold); font-size: 0.72rem; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  box-shadow: 0 0 18px rgba(var(--gold-rgb), 0.18);
+}
+
+/* Round summary standings + deltas */
+.summary-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.summary-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center; gap: 0.7rem;
+  padding: 0.5rem 0.7rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line);
+}
+.summary-row.me { box-shadow: 0 0 0 1px rgba(var(--gold-rgb), 0.35); }
+.summary-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summary-delta { font-family: monospace; font-weight: 800; color: var(--muted); }
+.summary-delta.up { color: var(--success); }
+.summary-total { font-family: monospace; font-weight: 900; color: var(--gold); }
+
+/* Cinematic final results */
+.final-cinematic { position: relative; overflow: hidden; }
+.final-title {
+  font-size: clamp(1.9rem, 4.4vw, 2.6rem); font-weight: 900; margin: 0;
+  text-shadow: 0 0 24px rgba(var(--gold-rgb), 0.3);
+}
+.final-winner-line {
+  font-size: clamp(1.05rem, 2.4vw, 1.35rem); font-weight: 800; color: var(--gold);
+  margin: 0.2rem 0 0; animation: finalPop 0.5s ease both;
+}
+.final-standings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+.final-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: 0.7rem;
+  padding: 0.6rem 0.8rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line);
+  opacity: 0.35; transform: translateY(6px);
+  transition: opacity 0.4s, transform 0.4s, box-shadow 0.4s, border-color 0.4s;
+}
+.final-row.revealed { opacity: 1; transform: none; }
+.final-row.me { box-shadow: 0 0 0 1px rgba(var(--gold-rgb), 0.35); }
+.final-rank { font-size: 1rem; }
+.final-name { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.final-score { font-family: monospace; font-weight: 900; color: var(--gold); }
+.final-row.winner {
+  background: rgba(var(--gold-rgb), 0.12); border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(var(--gold-rgb), 0.4), 0 0 28px rgba(var(--gold-rgb), 0.22);
+  animation: finalPop 0.5s ease both;
+}
+.final-row.winner .final-rank,
+.final-row.winner .final-name { color: var(--gold); }
+@keyframes finalPop {
+  0% { transform: scale(0.92); }
+  60% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+/* Confetti — CSS-only burst over the winner reveal */
+.confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
+.confetti-piece {
+  position: absolute; top: -12px; width: 8px; height: 14px; border-radius: 2px;
+  background: var(--gold);
+  animation: confettiFall 2.4s linear infinite;
+}
+.confetti-piece:nth-child(3n) { background: var(--teal); }
+.confetti-piece:nth-child(3n + 1) { background: var(--success); }
+.confetti-piece:nth-child(4n) { width: 6px; height: 6px; border-radius: 50%; }
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(120vh) rotate(540deg); opacity: 0.85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+  .final-row { transition: opacity 0.2s; transform: none; }
+  .final-winner-line, .final-row.winner { animation: none; }
+}
+
 /* ── Media queue ─────────────────────────────────────────────────────────────── */
 .media-queue { padding-top: 0.5rem; border-top: 1px solid var(--line); }
 .queue-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
