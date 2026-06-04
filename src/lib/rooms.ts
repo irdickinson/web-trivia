@@ -4,10 +4,13 @@ import { db } from './firebase'
 import { Room, GameSettings } from '../types/game'
 import { generateRoomCode } from '../utils/roomCode'
 import { sanitizeDisplayName } from '../utils/sanitize'
+import { DEFAULT_PACK_IDS } from '../data/packs'
+import { randomSeed } from './rng'
 
 export const DEFAULT_SETTINGS: GameSettings = {
   mode: 'classic',
-  questionSetId: 'built-in',
+  questionSetIds: DEFAULT_PACK_IDS,
+  seed: randomSeed(),
   categoryCount: 6,
   questionCountPerCategory: 5,
   pointValues: [100, 200, 300, 400, 500],

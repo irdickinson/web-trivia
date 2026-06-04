@@ -16,6 +16,7 @@ import {
 } from '../types/game'
 import { QuestionPack, BoardQuestion } from '../types/question'
 import { matchAnswer, normalizeAnswer } from './fuzzy'
+import { makeRng, seededShuffle } from './rng'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -23,15 +24,6 @@ import { matchAnswer, normalizeAnswer } from './fuzzy'
 
 function uid(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 8)
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
 }
 
 function makeMessage(
@@ -53,32 +45,62 @@ function matchOptions(room: Room) {
 // Board building
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function buildBoard(pack: QuestionPack, settings: GameSettings): BoardMap {
-  const { categoryCount, questionCountPerCategory, pointValues } = settings
+// Distinct categories that actually carry questions, in first-seen order. Built
+// from the questions (not pack.categories) so merged packs only surface
+// categories that have content.
+function uniqueCategories(pack: QuestionPack): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const q of pack.questions) {
+    if (!seen.has(q.category)) {
+      seen.add(q.category)
+      out.push(q.category)
+    }
+  }
+  return out
+}
 
-  // Shuffle the available categories and take the requested count.
-  const shuffled = shuffle(pack.categories)
-  const selectedCategories = shuffled.slice(0, categoryCount)
+export function buildBoard(
+  pack: QuestionPack,
+  settings: GameSettings,
+  seed: string,
+): BoardMap {
+  const { categoryCount, questionCountPerCategory, pointValues } = settings
+  const rng = makeRng(seed)
+
+  // Pick the categories for this game, seeded for reproducibility.
+  const selectedCategories = seededShuffle(uniqueCategories(pack), rng).slice(0, categoryCount)
 
   const board: BoardMap = {}
 
   for (let col = 0; col < selectedCategories.length; col++) {
     const cat = selectedCategories[col]
-    const qs = pack.questions
-      .filter((q) => q.category === cat)
-      .sort((a, b) => a.difficulty - b.difficulty)
-      .slice(0, questionCountPerCategory)
+    const used = new Set<string>()
 
-    for (let row = 0; row < qs.length; row++) {
+    for (let row = 0; row < questionCountPerCategory; row++) {
+      const difficulty = row + 1
+      // Prefer a question whose difficulty matches the row; fall back to any
+      // unused question in the category (e.g. sparse merged categories).
+      const tier = pack.questions.filter(
+        (q) => q.category === cat && q.difficulty === difficulty && !used.has(q.id),
+      )
+      const pool = tier.length > 0
+        ? tier
+        : pack.questions.filter((q) => q.category === cat && !used.has(q.id))
+      if (pool.length === 0) continue
+
+      const pick = pool[rng.int(pool.length)]
+      used.add(pick.id)
+
       const key = `r${row}c${col}`
       board[key] = {
-        ...qs[row],
+        ...pick,
         row,
         col,
         revealed: false,
         answeredCorrectlyBy: null,
         // Override value with the configured point scale if provided.
-        value: pointValues[row] ?? qs[row].value,
+        value: pointValues[row] ?? pick.value,
       }
     }
   }
@@ -86,11 +108,14 @@ export function buildBoard(pack: QuestionPack, settings: GameSettings): BoardMap
   return board
 }
 
-// Build distractors for multiple-choice mode from sibling questions on the board.
+// Build distractors for multiple-choice mode from sibling questions on the
+// board. Seeded per clue so the options are stable across clients.
 function buildMCOptions(
   correct: BoardQuestion,
   board: BoardMap,
+  seed: string,
 ): [string, string, string, string] | null {
+  const rng = makeRng(`${seed}:mc:${correct.id}`)
   const correctDisplay = correct.acceptedAnswers[0] ?? ''
 
   // Gather candidates from the same category (or whole board if insufficient)
@@ -98,12 +123,12 @@ function buildMCOptions(
     (q) => q.id !== correct.id && q.acceptedAnswers.length > 0,
   )
 
-  const pool = shuffle(siblings).map((q) => q.acceptedAnswers[0]).filter(Boolean)
+  const pool = seededShuffle(siblings, rng).map((q) => q.acceptedAnswers[0]).filter(Boolean)
   const distractors = [...new Set(pool)].slice(0, 3)
 
   if (distractors.length < 3) return null
 
-  const opts = shuffle([correctDisplay, ...distractors]) as [string, string, string, string]
+  const opts = seededShuffle([correctDisplay, ...distractors], rng) as [string, string, string, string]
   return opts
 }
 
@@ -112,7 +137,7 @@ function buildMCOptions(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function startGame(room: Room, pack: QuestionPack): Promise<void> {
-  const board = buildBoard(pack, room.settings)
+  const board = buildBoard(pack, room.settings, room.settings.seed)
   const playerUids = sortedPlayerUids(room)
   if (playerUids.length === 0) return
 
@@ -167,7 +192,7 @@ export async function selectClue(
   // Build options for multiple-choice mode.
   let options: [string, string, string, string] | null = null
   if (settings.mode === 'multiple-choice') {
-    options = buildMCOptions(q, room.board)
+    options = buildMCOptions(q, room.board, settings.seed)
   }
 
   const clueState: ClueState = {
@@ -644,7 +669,7 @@ export async function adjustScore(
 export async function initFinalRound(room: Room, pack: QuestionPack): Promise<void> {
   const count = room.settings.finalQuestionCount
   const eligible = pack.questions.filter((q) => q.isFinalEligible)
-  const selected = shuffle(eligible).slice(0, count)
+  const selected = seededShuffle(eligible, makeRng(`${room.settings.seed}:final`)).slice(0, count)
 
   const playerEntries: Record<string, FinalPlayerEntry> = {}
   for (const uid of Object.keys(room.players)) {

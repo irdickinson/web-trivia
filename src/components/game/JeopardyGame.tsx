@@ -35,6 +35,7 @@ interface Props {
 }
 
 type FlashKind = 'correct' | 'incorrect' | 'timeout'
+type RailTab = 'chat' | 'media' | 'activity'
 
 // ── Game header ───────────────────────────────────────────────────────────────
 
@@ -180,6 +181,20 @@ export function JeopardyGame({ room, user, pack }: Props) {
 
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [resultFlash, setResultFlash] = useState<FlashKind | null>(null)
+  const [railTab, setRailTab] = useState<RailTab>('chat')
+
+  // Surface a dot on the Chat tab when new messages arrive while it's hidden.
+  const seenChatRef = useRef(0)
+  const [chatUnread, setChatUnread] = useState(false)
+  const chatCount = room.chat?.length ?? 0
+  useEffect(() => {
+    if (railTab === 'chat') {
+      seenChatRef.current = chatCount
+      setChatUnread(false)
+    } else if (chatCount > seenChatRef.current) {
+      setChatUnread(true)
+    }
+  }, [chatCount, railTab])
 
   const processedOutcomeRef = useRef<string | null>(null)
   const flashTimerRef = useRef<number | null>(null)
@@ -359,9 +374,45 @@ export function JeopardyGame({ room, user, pack }: Props) {
             chooserId={room.currentChooserId}
             answeringId={room.clueState?.activeAnswerPlayerId}
           />
-          <MediaPlayer room={room} user={user} audio={audio} />
-          <ChatPanel room={room} user={user} />
-          <ActivityLog room={room} />
+
+          <div className="rail-tabs" role="tablist">
+            <button
+              role="tab"
+              className={`rail-tab${railTab === 'chat' ? ' active' : ''}`}
+              aria-selected={railTab === 'chat'}
+              onClick={() => setRailTab('chat')}
+            >
+              Chat{chatUnread && <span className="rail-tab-dot" aria-label="new messages" />}
+            </button>
+            <button
+              role="tab"
+              className={`rail-tab${railTab === 'media' ? ' active' : ''}`}
+              aria-selected={railTab === 'media'}
+              onClick={() => setRailTab('media')}
+            >
+              Media
+            </button>
+            <button
+              role="tab"
+              className={`rail-tab${railTab === 'activity' ? ' active' : ''}`}
+              aria-selected={railTab === 'activity'}
+              onClick={() => setRailTab('activity')}
+            >
+              Activity
+            </button>
+          </div>
+
+          {/* All panes stay mounted (hidden via display:none) so the media
+              player keeps playing and chat keeps its scroll while you switch. */}
+          <div className="rail-pane" hidden={railTab !== 'chat'}>
+            <ChatPanel room={room} user={user} />
+          </div>
+          <div className="rail-pane" hidden={railTab !== 'media'}>
+            <MediaPlayer room={room} user={user} audio={audio} />
+          </div>
+          <div className="rail-pane" hidden={railTab !== 'activity'}>
+            <ActivityLog room={room} />
+          </div>
         </aside>
       </main>
 
