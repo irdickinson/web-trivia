@@ -1,5 +1,7 @@
 # Web Trivia
 
+**▶ Play it live: https://web-trivia-next.web.app**
+
 A real-time multiplayer trivia game in the style of Jeopardy. Hosts create a room, players join with a 6-character code, and everyone competes live across several game modes. A wager-based Final Round closes out the game.
 
 ## Game modes
@@ -97,8 +99,16 @@ src/
     useAudio.ts            Music/SFX controls
 
   types/                   game.ts, question.ts
-  data/defaultPack.ts      Built-in question set
+  data/
+    authoring.ts           definePack() authoring helper
+    packs/                 Question packs + registry (index.ts, classic.ts, ...)
 ```
+
+Questions ship as **packs** under `src/data/packs/`. Each pack is authored with `definePack()` (`src/data/authoring.ts`) as categories of clues ordered easiest → hardest; ids, difficulty, and dollar values are derived from position. Hosts can select one or more packs per room, and boards are built deterministically from a seed (`src/lib/rng.ts`) so the same seed + packs always produce the same board. Adding a pack is copying a file in `src/data/packs/` and registering it in `index.ts`; `classic.ts` is the annotated template.
+
+## Deployment
+
+Hosted on **Firebase Hosting** (free Spark plan) at https://web-trivia-next.web.app. Production builds read `VITE_FIREBASE_*` env vars and talk to the live Firebase project; in dev the app auto-targets the local emulators instead. Deploy with `npm run build` then `firebase deploy`.
 
 ## Design
 
