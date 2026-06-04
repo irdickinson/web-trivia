@@ -26,6 +26,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
   enableFinalRound: true,
   finalQuestionCount: 3,
   maxPlayers: 10,
+  roundsCount: 4,
+  questionsPerRound: 3,
+  mcRatio: 0.5,
 }
 
 export async function createRoom(
@@ -62,6 +65,7 @@ export async function createRoom(
     chooserRotationIndex: 0,
     clueState: null,
     finalRound: null,
+    roundState: null,
     media: null,
     messages: [],
     chat: [],
