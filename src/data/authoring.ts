@@ -59,7 +59,8 @@ export function definePack(draft: PackDraft): QuestionPack {
         value: difficulty * VALUE_STEP,
         clue: c.clue,
         acceptedAnswers: c.answers.map(normalizeAuthored),
-        tags: c.tags,
+        // Omit tags entirely when absent — Firestore rejects undefined fields.
+        ...(c.tags && c.tags.length > 0 ? { tags: c.tags } : {}),
         isFinalEligible: c.finalEligible ?? false,
       })
     })
