@@ -4,6 +4,10 @@ import { useAuth } from '../context/AuthContext'
 import { createRoom, joinRoom, DEFAULT_SETTINGS } from '../lib/rooms'
 import { GameMode, GameSettings } from '../types/game'
 import { PageMeta } from '../components/seo/PageMeta'
+import { packSummaries } from '../data/packs'
+import { randomSeed } from '../lib/rng'
+
+const PACKS = packSummaries()
 
 const MODE_ANSWER_DEFAULTS: Record<GameMode, number> = {
   'jeopardy': 15,
@@ -27,7 +31,7 @@ export default function Lobby() {
   const defaultName = user?.displayName ?? ''
 
   const [createName, setCreateName] = useState(defaultName)
-  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS)
+  const [settings, setSettings] = useState<GameSettings>(() => ({ ...DEFAULT_SETTINGS, seed: randomSeed() }))
   const [createLoading, setCreateLoading] = useState(false)
   const [createError, setCreateError] = useState('')
 
@@ -42,6 +46,18 @@ export default function Lobby() {
 
   function handleModeChange(mode: GameMode) {
     patch({ mode, answerTimeSeconds: MODE_ANSWER_DEFAULTS[mode] })
+  }
+
+  function togglePack(id: string) {
+    setSettings((s) => {
+      const has = s.questionSetIds.includes(id)
+      // Keep at least one pack selected.
+      if (has && s.questionSetIds.length === 1) return s
+      const questionSetIds = has
+        ? s.questionSetIds.filter((p) => p !== id)
+        : [...s.questionSetIds, id]
+      return { ...s, questionSetIds }
+    })
   }
 
   async function handleCreate() {
@@ -124,6 +140,35 @@ export default function Lobby() {
               </p>
             </div>
 
+            {/* Question packs */}
+            <div className="stack" style={{ gap: '0.4rem' }}>
+              <span className="eyebrow" style={{ marginBottom: 0 }}>Question packs</span>
+              <div className="pack-grid">
+                {PACKS.map((p) => {
+                  const selected = settings.questionSetIds.includes(p.id)
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`pack-card${selected ? ' selected' : ''}`}
+                      onClick={() => togglePack(p.id)}
+                      aria-pressed={selected}
+                    >
+                      <span className="pack-check" aria-hidden>{selected ? '✓' : ''}</span>
+                      <span className="pack-body">
+                        <span className="pack-name">{p.name}</span>
+                        {p.description && <span className="pack-desc">{p.description}</span>}
+                        <span className="pack-meta">{p.categoryCount} categories · {p.questionCount} questions</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="muted" style={{ fontSize: '0.78rem', margin: 0 }}>
+                Categories from every selected pack are pooled together when building the board.
+              </p>
+            </div>
+
             <div className="settings-grid">
               <label>
                 <span className="eyebrow" style={{ marginBottom: 0 }}>Categories</span>
@@ -189,6 +234,30 @@ export default function Lobby() {
               <Check label="Progressive reveal" checked={settings.progressiveReveal} onChange={(v) => patch({ progressiveReveal: v })} />
               <Check label="Enable final round" checked={settings.enableFinalRound} onChange={(v) => patch({ enableFinalRound: v })} />
             </div>
+
+            {/* Board seed — same seed reproduces the same board */}
+            <label className="stack" style={{ gap: '0.4rem' }}>
+              <span className="eyebrow" style={{ marginBottom: 0 }}>Board seed</span>
+              <div className="row gap">
+                <input
+                  value={settings.seed}
+                  onChange={(e) => patch({ seed: e.target.value.toUpperCase().slice(0, 16) })}
+                  placeholder="Random seed"
+                  style={{ flex: 1, fontFamily: 'monospace', letterSpacing: '0.12em', fontWeight: 700 }}
+                />
+                <button
+                  type="button"
+                  className="secondary mini-btn"
+                  onClick={() => patch({ seed: randomSeed() })}
+                  title="Randomize seed"
+                >
+                  🎲
+                </button>
+              </div>
+              <p className="muted" style={{ fontSize: '0.78rem', margin: 0 }}>
+                Same seed + packs always builds the same board. Change it for a fresh game.
+              </p>
+            </label>
 
             {createError && <p className="error">{createError}</p>}
 

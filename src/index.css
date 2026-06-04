@@ -458,6 +458,50 @@ h1, h2, h3, p { margin: 0; }
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+/* ── Question-pack picker ────────────────────────────────────────────────────── */
+.pack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.6rem;
+}
+.pack-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 0.8rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+.pack-card:hover { border-color: rgba(var(--gold-rgb), 0.4); background: rgba(255, 255, 255, 0.045); }
+.pack-card:active { transform: translateY(1px); }
+.pack-card.selected {
+  border-color: rgba(var(--gold-rgb), 0.7);
+  background: rgba(var(--gold-rgb), 0.08);
+}
+.pack-check {
+  flex: 0 0 22px;
+  height: 22px;
+  margin-top: 0.1rem;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  color: var(--bg);
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+.pack-card.selected .pack-check { background: var(--gold); border-color: var(--gold); }
+.pack-body { display: flex; flex-direction: column; gap: 0.18rem; min-width: 0; }
+.pack-name { font-weight: 800; font-size: 0.95rem; }
+.pack-desc { color: var(--muted); font-size: 0.78rem; line-height: 1.4; }
+.pack-meta { color: var(--gold); font-size: 0.72rem; letter-spacing: 0.03em; opacity: 0.85; }
+
 /* ── Brand / code display ────────────────────────────────────────────────────── */
 .brand-block { display: flex; flex-direction: column; gap: 0.15rem; }
 .lobby-code-display {
