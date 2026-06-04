@@ -5,7 +5,7 @@ import { useRoom } from '../hooks/useRoom'
 import { leaveRoom } from '../lib/rooms'
 import { startGame } from '../lib/game'
 import { recordGameResult } from '../lib/stats'
-import { DEFAULT_PACK } from '../data/defaultPack'
+import { resolvePacks } from '../data/packs'
 import { LoadingScreen } from '../components/ui/LoadingScreen'
 import { JeopardyGame } from '../components/game/JeopardyGame'
 import { GameFinished } from '../components/game/GameFinished'
@@ -48,7 +48,7 @@ export default function Room() {
 
   const isHost = user.uid === room.hostId
   const players = Object.values(room.players)
-  const pack = DEFAULT_PACK
+  const pack = resolvePacks(room.settings.questionSetIds)
 
   if (
     room.phase === 'board' || room.phase === 'clue' ||

@@ -28,7 +28,8 @@ export interface Player {
 
 export interface GameSettings {
   mode: GameMode
-  questionSetId: string           // 'built-in' or custom pack id
+  questionSetIds: string[]        // ids of the selected packs (merged for the board)
+  seed: string                    // seeds board + final-round selection (reproducible)
   categoryCount: number           // columns on the board (1–8)
   questionCountPerCategory: number // rows on the board (1–6)
   pointValues: number[]           // value per row, length === questionCountPerCategory
