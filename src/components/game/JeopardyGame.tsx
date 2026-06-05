@@ -195,7 +195,6 @@ export function JeopardyGame({ room, user, pack, onLeaveGame }: Props) {
       <GameHeader
         room={room}
         user={user}
-        audio={audio}
         isHost={isHost}
         onBackToLobby={() => setShowEndConfirm(true)}
         onLeaveGame={onLeaveGame}
@@ -218,7 +217,7 @@ export function JeopardyGame({ room, user, pack, onLeaveGame }: Props) {
           )}
         </div>
 
-        <GameRail room={room} user={user} audio={audio} />
+        <GameRail room={room} user={user} />
       </main>
 
       {/* Fixed overlays */}

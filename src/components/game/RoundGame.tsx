@@ -110,7 +110,6 @@ export function RoundGame({ room, user, pack, onLeaveGame }: Props) {
       <GameHeader
         room={room}
         user={user}
-        audio={audio}
         isHost={isHost}
         onBackToLobby={() => setShowEndConfirm(true)}
         onLeaveGame={onLeaveGame}
@@ -118,7 +117,7 @@ export function RoundGame({ room, user, pack, onLeaveGame }: Props) {
 
       <main className="show-layout" style={{ flex: 1, minHeight: 0 }}>
         <div className="main-stage">{renderStage()}</div>
-        <GameRail room={room} user={user} audio={audio} />
+        <GameRail room={room} user={user} />
       </main>
 
       {showEndConfirm && (

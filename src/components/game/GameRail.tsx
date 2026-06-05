@@ -1,25 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
 import { User } from 'firebase/auth'
 import { Room } from '../../types/game'
-import { useAudio } from '../../hooks/useAudio'
 import { ScoreChart } from './ScoreChart'
 import { ChatPanel } from './ChatPanel'
 import { MediaPlayer } from './MediaPlayer'
+import { SharedVideo, useMediaPlayer } from './MediaProvider'
 
 type RailTab = 'chat' | 'media' | 'activity'
 
 interface Props {
   room: Room
   user: User
-  audio: ReturnType<typeof useAudio>
 }
 
-// The right-hand info rail shared by every in-game view: live scoreboard plus a
-// tabbed Chat / Media / Activity panel. All panes stay mounted (hidden via the
-// `hidden` attribute) so the media player keeps playing and chat keeps its
-// scroll position while you switch tabs.
-export function GameRail({ room, user, audio }: Props) {
-  const [railTab, setRailTab] = useState<RailTab>('chat')
+// The right-hand info rail shared by every in-game view: the shared-media video
+// frame (always mounted while media is active so playback survives tab switches),
+// the live scoreboard, then a tabbed Chat / Media / Activity panel. Tabs are
+// closed by default and toggle open/closed; panes stay mounted (hidden via the
+// `hidden` attribute) so chat keeps its scroll position.
+export function GameRail({ room, user }: Props) {
+  const [railTab, setRailTab] = useState<RailTab | null>(null)
+  const { hasMedia, canControl } = useMediaPlayer()
 
   // Surface a dot on the Chat tab when new messages arrive while it's hidden.
   const seenChatRef = useRef(0)
@@ -34,8 +35,14 @@ export function GameRail({ room, user, audio }: Props) {
     }
   }, [chatCount, railTab])
 
+  function toggle(tab: RailTab) {
+    setRailTab((cur) => (cur === tab ? null : tab))
+  }
+
   return (
     <aside className="info-rail">
+      {(hasMedia || canControl) && <SharedVideo />}
+
       <ScoreChart
         players={room.players}
         currentUid={user.uid}
@@ -48,7 +55,7 @@ export function GameRail({ room, user, audio }: Props) {
           role="tab"
           className={`rail-tab${railTab === 'chat' ? ' active' : ''}`}
           aria-selected={railTab === 'chat'}
-          onClick={() => setRailTab('chat')}
+          onClick={() => toggle('chat')}
         >
           Chat{chatUnread && <span className="rail-tab-dot" aria-label="new messages" />}
         </button>
@@ -56,7 +63,7 @@ export function GameRail({ room, user, audio }: Props) {
           role="tab"
           className={`rail-tab${railTab === 'media' ? ' active' : ''}`}
           aria-selected={railTab === 'media'}
-          onClick={() => setRailTab('media')}
+          onClick={() => toggle('media')}
         >
           Media
         </button>
@@ -64,7 +71,7 @@ export function GameRail({ room, user, audio }: Props) {
           role="tab"
           className={`rail-tab${railTab === 'activity' ? ' active' : ''}`}
           aria-selected={railTab === 'activity'}
-          onClick={() => setRailTab('activity')}
+          onClick={() => toggle('activity')}
         >
           Activity
         </button>
@@ -74,7 +81,7 @@ export function GameRail({ room, user, audio }: Props) {
         <ChatPanel room={room} user={user} />
       </div>
       <div className="rail-pane" hidden={railTab !== 'media'}>
-        <MediaPlayer room={room} user={user} audio={audio} />
+        <MediaPlayer room={room} user={user} />
       </div>
       <div className="rail-pane" hidden={railTab !== 'activity'}>
         <ActivityLog room={room} />

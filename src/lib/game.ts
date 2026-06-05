@@ -797,7 +797,7 @@ export async function returnToLobby(roomCode: string): Promise<void> {
     clueState: null,
     finalRound: null,
     roundState: null,
-    media: null,
+    // media is intentionally preserved — the queue/history stay set up for the group.
     messages: [],
     currentChooserId: null,
     chooserRotationIndex: 0,

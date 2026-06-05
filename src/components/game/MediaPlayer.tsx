@@ -1,160 +1,42 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { User } from 'firebase/auth'
 import { Room } from '../../types/game'
-import { useAudio } from '../../hooks/useAudio'
-import { loadYouTubeApi, extractVideoId, currentMediaPositionMs } from '../../lib/youtube'
+import { useMediaPlayer } from './MediaProvider'
+import { extractVideoId } from '../../lib/youtube'
 import {
   loadMediaVideo,
-  publishMediaPosition,
   stopMedia,
   grantMediaControl,
-  setMediaTitle,
   enqueueMedia,
   removeFromQueue,
   moveQueueItem,
   playQueueItem,
   playNext,
+  replayFromHistory,
 } from '../../lib/media'
 
 interface Props {
   room: Room
   user: User
-  audio: ReturnType<typeof useAudio>
 }
 
-export function MediaPlayer({ room, user, audio }: Props) {
+// The Media control panel (lives in a tab). The actual video frame is rendered
+// separately via <SharedVideo> so playback survives tab switching; this panel
+// manages the queue, history, the load input, and host grant-of-control.
+export function MediaPlayer({ room, user }: Props) {
+  const { canControl, controllerName, hasMedia } = useMediaPlayer()
   const isHost = user.uid === room.hostId
   const media = room.media
+  const queue = media?.queue ?? []
+  const history = media?.history ?? []
   const controllerId = media?.controllerId ?? room.hostId
-  const canControl = isHost || user.uid === controllerId
-  const controllerName = room.players[controllerId]?.name ?? 'Host'
-  const isActive = !!media?.videoId
+  const myName = room.players[user.uid]?.name ?? 'Player'
 
-  const hostElRef = useRef<HTMLDivElement>(null)
-  const playerRef = useRef<YTPlayer | null>(null)
-  // Latest values for the player's once-bound callbacks.
-  const roomRef = useRef(room)
-  roomRef.current = room
-  const mediaRef = useRef(media)
-  mediaRef.current = media
-  const canControlRef = useRef(canControl)
-  canControlRef.current = canControl
-  // Which video the local player has loaded (so we don't re-cue and reset it).
-  const loadedIdRef = useRef<string | null>(null)
-
-  const [ready, setReady] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
-  const [localPlaying, setLocalPlaying] = useState(false)
   const [urlInput, setUrlInput] = useState('')
   const [inputError, setInputError] = useState('')
   const [queueInput, setQueueInput] = useState('')
   const [queueError, setQueueError] = useState('')
 
-  const queue = media?.queue ?? []
-  const myName = room.players[user.uid]?.name ?? 'Player'
-
-  // ── Duck the procedural music while THIS client is playing the video ─────────
-  useEffect(() => {
-    audio.setDucked(localPlaying)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localPlaying])
-
-  // ── Create the visible player once (native controls = reliable + per-viewer ads)
-  useEffect(() => {
-    let cancelled = false
-    void loadYouTubeApi().then(() => {
-      if (cancelled || !hostElRef.current || !window.YT) return
-      playerRef.current = new window.YT.Player(hostElRef.current, {
-        height: '100%',
-        width: '100%',
-        playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
-        events: {
-          onReady: () => setReady(true),
-          onStateChange: (e) => {
-            const playing = e.data === window.YT?.PlayerState.PLAYING
-            setLocalPlaying(playing)
-            // The controller publishes their position so others can sync to it.
-            if (canControlRef.current) {
-              const p = playerRef.current
-              if (e.data === window.YT?.PlayerState.PLAYING) {
-                void publishMediaPosition(roomRef.current, (p?.getCurrentTime() ?? 0) * 1000, 'playing')
-              } else if (e.data === window.YT?.PlayerState.PAUSED) {
-                void publishMediaPosition(roomRef.current, (p?.getCurrentTime() ?? 0) * 1000, 'paused')
-              } else if (e.data === window.YT?.PlayerState.ENDED) {
-                // Autoplay the next queued video (or stop if the queue is empty).
-                void playNext(roomRef.current)
-              }
-            }
-          },
-        },
-      })
-    })
-    return () => {
-      cancelled = true
-      try { playerRef.current?.destroy() } catch { /* ignore */ }
-      playerRef.current = null
-    }
-  }, [])
-
-  // ── Load the broadcast track locally when it changes (cued, not autoplayed) ──
-  useEffect(() => {
-    const p = playerRef.current
-    if (!ready || !p) return
-
-    if (!media?.videoId) {
-      if (loadedIdRef.current) {
-        try { p.stopVideo() } catch { /* ignore */ }
-        loadedIdRef.current = null
-        setLocalPlaying(false)
-      }
-      return
-    }
-
-    if (loadedIdRef.current !== media.videoId) {
-      loadedIdRef.current = media.videoId
-      const startSec = currentMediaPositionMs(media) / 1000
-      // The controller auto-plays an advancing track (autoplay-next); everyone
-      // else cues paused so their own ads / Premium are handled per viewer.
-      try {
-        if (canControl && media.status === 'playing') {
-          p.loadVideoById({ videoId: media.videoId, startSeconds: startSec })
-        } else {
-          p.cueVideoById({ videoId: media.videoId, startSeconds: startSec })
-        }
-      } catch { /* ignore */ }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, media?.videoId, media?.positionMs, media?.anchorTime])
-
-  // ── Controller heartbeat: keep the published position fresh while playing ────
-  useEffect(() => {
-    if (!ready || !canControl || !localPlaying) return
-    const id = window.setInterval(() => {
-      const p = playerRef.current
-      if (!p) return
-      try { void publishMediaPosition(roomRef.current, (p.getCurrentTime() || 0) * 1000, 'playing') } catch { /* ignore */ }
-    }, 5000)
-    return () => window.clearInterval(id)
-  }, [ready, canControl, localPlaying])
-
-  // ── Upgrade the placeholder label to the real video title (controller only) ──
-  useEffect(() => {
-    if (!ready || !canControl || !media?.videoId) return
-    const p = playerRef.current
-    if (!p) return
-    const t = window.setTimeout(() => {
-      try {
-        const data = p.getVideoData()
-        if (data.video_id === media.videoId && data.title && data.title !== media.title) {
-          void setMediaTitle(room, data.title)
-        }
-      } catch { /* metadata not ready yet */ }
-    }, 1200)
-    return () => window.clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, canControl, media?.videoId, media?.title])
-
-  // ── Actions ──────────────────────────────────────────────────────────────────
   function handleLoad() {
     setInputError('')
     const id = extractVideoId(urlInput)
@@ -163,7 +45,6 @@ export function MediaPlayer({ room, user, audio }: Props) {
       return
     }
     setUrlInput('')
-    setCollapsed(false)
     void loadMediaVideo(room, id, id)
   }
 
@@ -178,47 +59,18 @@ export function MediaPlayer({ room, user, audio }: Props) {
     void enqueueMedia(room, id, queueInput.trim(), user.uid, myName)
   }
 
-  function handleSyncToHost() {
-    const p = playerRef.current
-    const m = mediaRef.current
-    if (!p || !m?.videoId) return
-    setCollapsed(false)
-    const targetSec = currentMediaPositionMs(m) / 1000
-    try {
-      p.seekTo(targetSec, true)
-      p.playVideo()
-    } catch { /* ignore */ }
-  }
-
   return (
     <div className="panel elevated-panel stack media-player">
       <div className="row between" style={{ alignItems: 'center' }}>
         <div className="eyebrow" style={{ marginBottom: 0 }}>Media</div>
-        <div className="row gap" style={{ gap: '0.5rem', alignItems: 'center' }}>
-          {isActive && (
-            <span className="media-now muted">
-              {canControl ? 'You control playback' : `${controllerName} hosting`}
-            </span>
-          )}
-          {isActive && (
-            <button
-              className="secondary mini-btn"
-              onClick={() => setCollapsed((c) => !c)}
-              title={collapsed ? 'Show video' : 'Hide video'}
-            >
-              {collapsed ? '▸' : '▾'}
-            </button>
-          )}
-        </div>
+        {hasMedia && (
+          <span className="media-now muted">
+            {canControl ? 'You control playback' : `${controllerName} hosting`}
+          </span>
+        )}
       </div>
 
-      {/* Visible embed (required by the YouTube API terms). Native controls let
-          each viewer play/seek and handle their own ads / Premium. */}
-      <div className={`media-video${collapsed || !isActive ? ' collapsed' : ''}`}>
-        <div ref={hostElRef} />
-      </div>
-
-      {isActive ? (
+      {hasMedia ? (
         <div className="media-track" title={media?.title}>
           {media?.title || 'Custom track'}
         </div>
@@ -228,13 +80,6 @@ export function MediaPlayer({ room, user, audio }: Props) {
             ? 'Paste a YouTube link (or share one in chat) to play it in the room.'
             : `${controllerName} can start shared media.`}
         </p>
-      )}
-
-      {/* Everyone presses play in their own player; non-controllers can realign. */}
-      {isActive && !canControl && (
-        <button className="secondary mini-btn" onClick={handleSyncToHost}>
-          ⟲ Sync to host
-        </button>
       )}
 
       {/* Controller: broadcast a track + stop */}
@@ -251,7 +96,7 @@ export function MediaPlayer({ room, user, audio }: Props) {
             <button className="mini-btn" onClick={handleLoad}>Load</button>
           </div>
           {inputError && <p className="error" style={{ fontSize: '0.8rem' }}>{inputError}</p>}
-          {isActive && (
+          {hasMedia && (
             <button className="secondary mini-btn" onClick={() => void stopMedia(room)}>■ Stop for everyone</button>
           )}
         </>
@@ -305,6 +150,25 @@ export function MediaPlayer({ room, user, audio }: Props) {
         </div>
         {queueError && <p className="error" style={{ fontSize: '0.8rem' }}>{queueError}</p>}
       </div>
+
+      {/* History — recently played; one tap to replay */}
+      {history.length > 0 && (
+        <div className="media-history stack" style={{ gap: '0.4rem' }}>
+          <span className="chip-label">Recently played</span>
+          <ul className="queue-list">
+            {history.map((item) => (
+              <li key={item.id} className="queue-item">
+                <span className="queue-title" title={item.title}>{item.title}</span>
+                {canControl && (
+                  <span className="queue-actions row" style={{ gap: '0.2rem' }}>
+                    <button className="icon-btn" onClick={() => void replayFromHistory(room, item)} title="Play again">▶</button>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Host grants control */}
       {isHost && (

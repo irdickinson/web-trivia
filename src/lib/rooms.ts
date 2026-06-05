@@ -108,3 +108,22 @@ export async function leaveRoom(code: string, userId: string): Promise<void> {
     [`players.${userId}`]: deleteField(),
   })
 }
+
+// Host retunes the game from the waiting room without disbanding the lobby.
+export async function updateRoomSettings(code: string, settings: GameSettings): Promise<void> {
+  await updateDoc(doc(db, 'rooms', code), { settings })
+}
+
+// Host removes a player from the room. The kicked client detects it's gone from
+// room.players and navigates out. The host can't kick themselves.
+export async function kickPlayer(code: string, hostId: string, targetUid: string): Promise<void> {
+  if (targetUid === hostId) return
+  await runTransaction(db, async (tx) => {
+    const roomRef = doc(db, 'rooms', code)
+    const snap = await tx.get(roomRef)
+    if (!snap.exists()) return
+    const room = snap.data() as Room
+    if (room.hostId !== hostId) return // only the host may kick
+    tx.update(roomRef, { [`players.${targetUid}`]: deleteField() })
+  })
+}

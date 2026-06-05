@@ -1,19 +1,19 @@
 import { User } from 'firebase/auth'
 import { Room } from '../../types/game'
-import { useAudio } from '../../hooks/useAudio'
+import { MediaStatusBar } from './MediaStatusBar'
 
 interface HeaderProps {
   room: Room
   user: User
-  audio: ReturnType<typeof useAudio>
   isHost: boolean
   onBackToLobby: () => void
   onLeaveGame: () => void
 }
 
-// Shared game header: status chips, audio controls, and the lobby/leave control.
-// The host can end the game back to the lobby; everyone else can leave to Home.
-export function GameHeader({ room, user, audio, isHost, onBackToLobby, onLeaveGame }: HeaderProps) {
+// Shared game header: status chips, the shared-media status bar, and the
+// lobby/leave control. The host can end the game back to the lobby; everyone
+// else can leave to Home.
+export function GameHeader({ room, user, isHost, onBackToLobby, onLeaveGame }: HeaderProps) {
   const me = room.players[user.uid]
   const chooser = room.players[room.currentChooserId ?? '']
   const cs = room.clueState
@@ -50,40 +50,9 @@ export function GameHeader({ room, user, audio, isHost, onBackToLobby, onLeaveGa
         )}
       </div>
 
-      {/* Audio controls + lobby/leave */}
+      {/* Shared-media status bar + lobby/leave */}
       <div className="topbar-actions">
-        <div className="panellet music-control">
-          <div className="music-row">
-            <button className="secondary mini-btn" onClick={audio.prevTrack} title="Previous track">◀</button>
-            <button className="secondary mini-btn" onClick={audio.toggleMusic} title={audio.musicPaused ? 'Play' : 'Pause'}>
-              {audio.musicPaused ? '▶' : '⏸'}
-            </button>
-            <button className="secondary mini-btn" onClick={audio.nextTrack} title="Next track">▶</button>
-            <button
-              className="secondary mini-btn"
-              onClick={audio.toggleSfx}
-              title={audio.sfxEnabled ? 'Mute SFX' : 'Unmute SFX'}
-              style={{ opacity: audio.sfxEnabled ? 1 : 0.4 }}
-            >
-              {audio.sfxEnabled ? '🔊' : '🔇'}
-            </button>
-          </div>
-          <div className="row gap" style={{ alignItems: 'center' }}>
-            <span className="mini-track-name" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {audio.trackName}
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={audio.musicVol}
-              onChange={(e) => audio.setMusicVol(parseFloat(e.target.value))}
-              style={{ flex: '0 0 64px' }}
-              title="Music volume"
-            />
-          </div>
-        </div>
+        <MediaStatusBar />
         {isHost ? (
           <button className="danger mini-btn" onClick={onBackToLobby}>
             ← Lobby
