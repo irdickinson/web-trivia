@@ -181,6 +181,10 @@ export interface RoomMedia {
   positionMs: number             // controller's position sampled at anchorTime
   anchorTime: number             // ms timestamp the position was sampled
   queue: MediaQueueItem[]        // upcoming videos; anyone in the room can append
+  history: MediaQueueItem[]      // recently played, newest first (replay in one tap)
+  // Monotonic counter. Bumping it tells every client to seek to the broadcast
+  // position and play — drives autoplay-on-change, "Play for everyone", "Sync all".
+  syncNonce: number
 }
 
 export interface ChatMessage {

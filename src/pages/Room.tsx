@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useRoom } from '../hooks/useRoom'
-import { useAudio } from '../hooks/useAudio'
 import { leaveRoom } from '../lib/rooms'
 import { startGame, startRoundGame } from '../lib/game'
 import { recordGameResult } from '../lib/stats'
@@ -11,8 +10,8 @@ import { LoadingScreen } from '../components/ui/LoadingScreen'
 import { JeopardyGame } from '../components/game/JeopardyGame'
 import { RoundGame } from '../components/game/RoundGame'
 import { GameFinished } from '../components/game/GameFinished'
-import { ChatPanel } from '../components/game/ChatPanel'
-import { MediaPlayer } from '../components/game/MediaPlayer'
+import { WaitingRoom } from '../components/room/WaitingRoom'
+import { MediaProvider } from '../components/game/MediaProvider'
 import { BackdropOrb } from '../components/ui/BackdropOrb'
 import { PageMeta } from '../components/seo/PageMeta'
 
@@ -21,8 +20,8 @@ export default function Room() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { room, loading, notFound } = useRoom(code)
-  const audio = useAudio()
-  const [waitTab, setWaitTab] = useState<'chat' | 'media'>('chat')
+  // Set when we intentionally leave so the "kicked out" effect doesn't redirect us.
+  const leavingRef = useRef(false)
 
   // Record the result once per finished game (guarded against snapshot churn
   // and refreshes; the stats write itself is also idempotent per game).
@@ -38,6 +37,13 @@ export default function Room() {
     recordedRef.current = key
     void recordGameResult(room, user.uid)
   }, [room, user])
+
+  // Kicked / removed: if we're no longer in the room's player list, bounce out.
+  // Refreshing keeps the player in the doc, so this only fires on a real removal.
+  useEffect(() => {
+    if (loading || notFound || !room || !user || leavingRef.current) return
+    if (!room.players[user.uid]) navigate('/lobby')
+  }, [room, user, loading, notFound, navigate])
 
   if (loading) return <LoadingScreen />
 
@@ -56,30 +62,7 @@ export default function Room() {
   if (!room || !user) return null
 
   const isHost = user.uid === room.hostId
-  const players = Object.values(room.players)
   const pack = resolvePacks(room.settings.questionSetIds)
-
-  if (
-    room.phase === 'board' || room.phase === 'clue' ||
-    room.phase === 'final-wager' || room.phase === 'final-answer' ||
-    room.phase === 'final-results'
-  ) {
-    return <JeopardyGame room={room} user={user} pack={pack} onLeaveGame={handleLeaveGame} />
-  }
-
-  if (room.phase === 'round-question') {
-    return <RoundGame room={room} user={user} pack={pack} onLeaveGame={handleLeaveGame} />
-  }
-
-  if (room.phase === 'finished') {
-    return (
-      <GameFinished
-        players={room.players}
-        currentUid={user.uid}
-        onPlayAgain={() => navigate('/lobby')}
-      />
-    )
-  }
 
   async function handleStart() {
     if (!isHost || !room) return
@@ -92,108 +75,52 @@ export default function Room() {
 
   async function handleLeave() {
     if (!code) return
+    leavingRef.current = true
     try { await leaveRoom(code, user!.uid) } finally { navigate('/lobby') }
   }
 
   // Used by non-host players to exit a running game back to their home menu.
   async function handleLeaveGame() {
     if (!code) return
+    leavingRef.current = true
     try { await leaveRoom(code, user!.uid) } finally { navigate('/') }
   }
 
-  const MODE_LABELS: Record<string, string> = {
-    jeopardy: 'Jeopardy',
-    classic: 'Classic',
-    'multiple-choice': 'Multiple Choice',
-    speed: 'Speed',
+  function renderPhase() {
+    if (!room || !user) return null
+    if (
+      room.phase === 'board' || room.phase === 'clue' ||
+      room.phase === 'final-wager' || room.phase === 'final-answer' ||
+      room.phase === 'final-results'
+    ) {
+      return <JeopardyGame room={room} user={user} pack={pack} onLeaveGame={handleLeaveGame} />
+    }
+    if (room.phase === 'round-question') {
+      return <RoundGame room={room} user={user} pack={pack} onLeaveGame={handleLeaveGame} />
+    }
+    if (room.phase === 'finished') {
+      return (
+        <GameFinished
+          players={room.players}
+          currentUid={user.uid}
+          onPlayAgain={() => navigate('/lobby')}
+        />
+      )
+    }
+    return (
+      <>
+        <BackdropOrb />
+        <PageMeta title="Game Room" description="Waiting for the host to start the game." />
+        <WaitingRoom room={room} user={user} onStart={handleStart} onLeave={handleLeave} />
+      </>
+    )
   }
 
+  // One MediaProvider wraps every phase so the shared YouTube player is never torn
+  // down across waiting room → game → lobby (queue + playback persist).
   return (
-    <main className="page center">
-      <BackdropOrb />
-      <PageMeta title="Game Room" description="Waiting for the host to start the game." />
-      <div className="stack" style={{ width: 'min(620px, 94vw)' }}>
-      <div className="panel elevated-panel stack" style={{ padding: '1.5rem' }}>
-
-        <div className="topbar">
-          <div>
-            <div className="eyebrow">Room code</div>
-            <div className="lobby-code-display">{room.code}</div>
-          </div>
-          <button className="secondary mini-btn" onClick={handleLeave}>Leave</button>
-        </div>
-
-        <div className="divider" />
-
-        <div className="stack compact-stack">
-          <div className="eyebrow">Players — {players.length}</div>
-          {players.map((player) => (
-            <div
-              key={player.uid}
-              className="player-row"
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-            >
-              <span style={{ fontWeight: 600 }}>{player.name}</span>
-              {player.uid === room.hostId && <span className="tag chooser-tag">Host</span>}
-            </div>
-          ))}
-          {players.length === 0 && (
-            <p className="muted" style={{ fontSize: '0.88rem' }}>No players yet…</p>
-          )}
-        </div>
-
-        <div className="divider" />
-
-        <p className="muted" style={{ fontSize: '0.85rem' }}>
-          {MODE_LABELS[room.settings.mode] ?? room.settings.mode}
-          {' · '}{room.settings.categoryCount} categories
-          {' · '}{room.settings.questionCountPerCategory} questions each
-          {' · '}up to ${(room.settings.pointValues[room.settings.pointValues.length - 1] ?? 0).toLocaleString()}
-        </p>
-
-        {isHost ? (
-          <button
-            className="btn-lg"
-            style={{ width: '100%' }}
-            onClick={handleStart}
-            disabled={players.length < 1}
-          >
-            Start Game
-          </button>
-        ) : (
-          <p className="muted" style={{ textAlign: 'center', fontSize: '0.88rem' }}>
-            Waiting for the host to start…
-          </p>
-        )}
-      </div>
-
-      <div className="rail-tabs" role="tablist">
-        <button
-          role="tab"
-          className={`rail-tab${waitTab === 'chat' ? ' active' : ''}`}
-          aria-selected={waitTab === 'chat'}
-          onClick={() => setWaitTab('chat')}
-        >
-          Chat
-        </button>
-        <button
-          role="tab"
-          className={`rail-tab${waitTab === 'media' ? ' active' : ''}`}
-          aria-selected={waitTab === 'media'}
-          onClick={() => setWaitTab('media')}
-        >
-          Media
-        </button>
-      </div>
-
-      {/* Both panes stay mounted so the media player keeps playing across tabs. */}
-      <div hidden={waitTab !== 'chat'}>
-        <ChatPanel room={room} user={user} />
-      </div>
-      <div hidden={waitTab !== 'media'}>
-        <MediaPlayer room={room} user={user} audio={audio} />
-      </div>
-      </div>
-    </main>
+    <MediaProvider room={room} user={user}>
+      {renderPhase()}
+    </MediaProvider>
   )
 }

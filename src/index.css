@@ -570,10 +570,23 @@ h1, h2, h3, p { margin: 0; }
   border-radius: 18px;
   padding: 0.65rem 0.8rem;
 }
-.music-control { display: flex; flex-direction: column; gap: 0.4rem; min-width: 150px; }
-.music-row { display: flex; gap: 0.35rem; }
-.mini-track-name { color: var(--muted); font-size: 0.82rem; }
 .controls-packed { gap: 0.75rem; }
+
+/* Shared-media status bar (replaces the old procedural-music transport) */
+.media-status-bar {
+  display: flex; align-items: center; gap: 0.5rem;
+  min-width: 220px; max-width: 380px; flex-wrap: wrap;
+}
+.media-status-now {
+  display: flex; align-items: center; gap: 0.4rem;
+  min-width: 0; flex: 1;
+}
+.media-status-icon { font-size: 0.9rem; }
+.media-status-title {
+  font-size: 0.82rem; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+.media-status-controls { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
 
 /* ── Board ───────────────────────────────────────────────────────────────────── */
 .board-panel { position: relative; flex: 1; min-height: 0; }
@@ -817,19 +830,23 @@ h1, h2, h3, p { margin: 0; }
   border: 1px solid rgba(var(--teal-rgb), 0.22);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* Visible embed (required by the YouTube API terms). Kept mounted while
-   collapsed so audio keeps playing; collapsing just hides the frame. */
-.media-video {
+/* Shared-player video slot (required by the YouTube API terms). The iframe lives
+   in a persistent container adopted into this slot, so it survives tab/phase
+   changes. Collapsing hides the frame (height 0) WITHOUT unmounting, so audio
+   keeps playing. */
+.media-video-slot {
   position: relative; width: 100%; aspect-ratio: 16 / 9;
   border-radius: 12px; overflow: hidden; background: #000;
   border: 1px solid var(--line);
 }
-.media-video.collapsed {
+.media-video-slot.collapsed {
   aspect-ratio: auto; height: 0; border-width: 0; margin: 0;
 }
-.media-video iframe {
+.yt-player-container { position: absolute; inset: 0; width: 100%; height: 100%; }
+.media-video-slot iframe {
   position: absolute; inset: 0; width: 100% !important; height: 100% !important; border: 0;
 }
+.media-history { padding-top: 0.4rem; border-top: 1px solid var(--line); }
 .media-grant {
   display: flex; align-items: center; gap: 0.5rem;
   padding-top: 0.5rem; border-top: 1px solid var(--line);
